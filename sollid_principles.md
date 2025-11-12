@@ -5871,3 +5871,2515 @@ Example:
 ---
 
 *Happy Coding! 🚀*
+
+# ✂️ Interface Segregation Principle - Real-Time E-Commerce Deep Dive
+---
+
+## 🎯 ISP Core Concept
+
+### Definition
+> **"Clients should not be forced to depend on interfaces they don't use"**
+
+### What It Really Means 💭
+
+```java
+/**
+ * ❌ FAT INTERFACE (Bad):
+ * interface Worker {
+ *     void work();
+ *     void eat();
+ *     void sleep();
+ *     void getSalary();
+ *     void takeVacation();
+ * }
+ * 
+ * class Robot implements Worker {
+ *     void work() { ... }
+ *     void eat() { throw new UnsupportedOperationException(); } // 🔥 Forced!
+ *     void sleep() { throw new UnsupportedOperationException(); } // 🔥 Forced!
+ *     void getSalary() { throw new UnsupportedOperationException(); } // 🔥 Forced!
+ *     void takeVacation() { throw new UnsupportedOperationException(); } // 🔥 Forced!
+ * }
+ * 
+ * ✅ SEGREGATED INTERFACES (Good):
+ * interface Workable { void work(); }
+ * interface Eatable { void eat(); }
+ * interface Sleepable { void sleep(); }
+ * interface Payable { void getSalary(); }
+ * 
+ * class Human implements Workable, Eatable, Sleepable, Payable { ... }
+ * class Robot implements Workable { ... } // ✨ Only what it needs!
+ * 
+ * KEY PRINCIPLE:
+ * ✅ Many small, specific interfaces
+ * ✅ Clients implement only what they need
+ * ✅ No empty/throwing methods
+ * ✅ High cohesion, low coupling
+ * 
+ * ❌ One large, general interface
+ * ❌ Forced to implement unused methods
+ * ❌ Polluted implementations
+ * ❌ Tight coupling
+ */
+```
+
+### The "Fat Interface" Smell Test 👃
+
+**Ask yourself:** *"Does this class have empty methods or methods that throw UnsupportedOperationException?"*
+
+- If **YES** → ❌ **ISP Violated** (Fat Interface)
+- If **NO** → ✅ **ISP Followed** (Segregated Interfaces)
+
+---
+
+## 📦 Scenario 1: Product Management System
+
+### ❌ BAD Example - Fat Interface Violation
+
+```java
+/**
+ * 🚫 VIOLATION: One massive interface forcing all products to implement everything!
+ * This is the classic ISP violation in e-commerce
+ */
+
+public interface Product {
+    
+    // Basic product info - ALL products need this ✅
+    String getId();
+    String getName();
+    String getDescription();
+    double getPrice();
+    String getCategory();
+    
+    // Physical product methods - Only physical products need these! ⚠️
+    double getWeight();
+    double getLength();
+    double getWidth();
+    double getHeight();
+    String getShippingClass();
+    int getInventoryCount();
+    void updateInventory(int quantity);
+    
+    // Digital product methods - Only digital products need these! ⚠️
+    String getDownloadUrl();
+    long getFileSizeInBytes();
+    String getFileFormat();
+    int getDownloadLimit();
+    LocalDateTime getExpirationDate();
+    
+    // Service/Subscription methods - Only services need these! ⚠️
+    int getDurationInDays();
+    boolean isRecurring();
+    double getRenewalPrice();
+    LocalDateTime getNextBillingDate();
+    
+    // Customizable product methods - Only some products need these! ⚠️
+    List<CustomizationOption> getCustomizationOptions();
+    void addCustomization(String option, String value);
+    boolean isCustomizable();
+    
+    // Rental product methods - Only rental products need these! ⚠️
+    double getDailyRentalRate();
+    double getSecurityDeposit();
+    int getMaxRentalDays();
+    
+    // Perishable product methods - Only food items need these! ⚠️
+    LocalDate getExpiryDate();
+    String getStorageInstructions();
+    boolean requiresRefrigeration();
+}
+
+/**
+ * 🔥 PROBLEM: Physical Book is forced to implement irrelevant methods
+ */
+public class PhysicalBook implements Product {
+    
+    private String id;
+    private String name;
+    private double price;
+    private double weight;
+    private int inventoryCount;
+    
+    // ✅ Implements what it needs
+    @Override
+    public String getId() { return id; }
+    
+    @Override
+    public String getName() { return name; }
+    
+    @Override
+    public double getPrice() { return price; }
+    
+    @Override
+    public double getWeight() { return weight; }
+    
+    @Override
+    public int getInventoryCount() { return inventoryCount; }
+    
+    @Override
+    public void updateInventory(int quantity) {
+        this.inventoryCount += quantity;
+    }
+    
+    // 🔥 FORCED to implement digital product methods (DOESN'T MAKE SENSE!)
+    @Override
+    public String getDownloadUrl() {
+        throw new UnsupportedOperationException("Physical books can't be downloaded!");
+    }
+    
+    @Override
+    public long getFileSizeInBytes() {
+        throw new UnsupportedOperationException("Physical books don't have file size!");
+    }
+    
+    @Override
+    public String getFileFormat() {
+        throw new UnsupportedOperationException("Physical books don't have file format!");
+    }
+    
+    @Override
+    public int getDownloadLimit() {
+        throw new UnsupportedOperationException("Physical books can't be downloaded!");
+    }
+    
+    @Override
+    public LocalDateTime getExpirationDate() {
+        throw new UnsupportedOperationException("Physical books don't expire!");
+    }
+    
+    // 🔥 FORCED to implement service/subscription methods
+    @Override
+    public int getDurationInDays() {
+        throw new UnsupportedOperationException("Books are not services!");
+    }
+    
+    @Override
+    public boolean isRecurring() {
+        return false; // Meaningless for books
+    }
+    
+    @Override
+    public double getRenewalPrice() {
+        throw new UnsupportedOperationException("Books don't renew!");
+    }
+    
+    @Override
+    public LocalDateTime getNextBillingDate() {
+        throw new UnsupportedOperationException("Books don't have billing dates!");
+    }
+    
+    // 🔥 FORCED to implement customization methods
+    @Override
+    public List<CustomizationOption> getCustomizationOptions() {
+        return Collections.emptyList(); // Empty - wasteful!
+    }
+    
+    @Override
+    public void addCustomization(String option, String value) {
+        throw new UnsupportedOperationException("Books can't be customized!");
+    }
+    
+    @Override
+    public boolean isCustomizable() {
+        return false;
+    }
+    
+    // 🔥 FORCED to implement rental methods
+    @Override
+    public double getDailyRentalRate() {
+        throw new UnsupportedOperationException("Books are not for rent!");
+    }
+    
+    @Override
+    public double getSecurityDeposit() {
+        throw new UnsupportedOperationException("No security deposit for books!");
+    }
+    
+    @Override
+    public int getMaxRentalDays() {
+        throw new UnsupportedOperationException("Books are not rentals!");
+    }
+    
+    // 🔥 FORCED to implement perishable methods
+    @Override
+    public LocalDate getExpiryDate() {
+        throw new UnsupportedOperationException("Books don't expire!");
+    }
+    
+    @Override
+    public String getStorageInstructions() {
+        throw new UnsupportedOperationException("Books don't need special storage!");
+    }
+    
+    @Override
+    public boolean requiresRefrigeration() {
+        return false; // Meaningless
+    }
+}
+
+/**
+ * 🔥 PROBLEM: Digital Course has the same issues
+ */
+public class DigitalCourse implements Product {
+    
+    private String id;
+    private String name;
+    private double price;
+    private String downloadUrl;
+    private long fileSizeInBytes;
+    
+    // ✅ Implements what it needs
+    @Override
+    public String getId() { return id; }
+    
+    @Override
+    public String getName() { return name; }
+    
+    @Override
+    public double getPrice() { return price; }
+    
+    @Override
+    public String getDownloadUrl() { return downloadUrl; }
+    
+    @Override
+    public long getFileSizeInBytes() { return fileSizeInBytes; }
+    
+    // 🔥 FORCED to implement physical product methods (DOESN'T MAKE SENSE!)
+    @Override
+    public double getWeight() {
+        return 0; // Digital products have no weight - meaningless!
+    }
+    
+    @Override
+    public double getLength() {
+        throw new UnsupportedOperationException("Digital products have no dimensions!");
+    }
+    
+    @Override
+    public double getWidth() {
+        throw new UnsupportedOperationException("Digital products have no dimensions!");
+    }
+    
+    @Override
+    public double getHeight() {
+        throw new UnsupportedOperationException("Digital products have no dimensions!");
+    }
+    
+    @Override
+    public String getShippingClass() {
+        throw new UnsupportedOperationException("Digital products don't ship!");
+    }
+    
+    @Override
+    public int getInventoryCount() {
+        return Integer.MAX_VALUE; // Infinite digital copies - meaningless!
+    }
+    
+    @Override
+    public void updateInventory(int quantity) {
+        // Does nothing - digital products don't have inventory
+    }
+    
+    // 🔥 More forced implementations...
+    @Override
+    public boolean isRecurring() { return false; }
+    
+    @Override
+    public double getDailyRentalRate() {
+        throw new UnsupportedOperationException("Courses are not rentals!");
+    }
+    
+    // ... 20+ more meaningless methods!
+}
+
+/**
+ * 🔥 CLIENT CODE PROBLEMS
+ */
+@Service
+public class ProductService {
+    
+    /**
+     * 🔥 PROBLEM: Can't trust the interface!
+     * Need to check types and handle exceptions
+     */
+    public void displayProductDetails(Product product) {
+        System.out.println("Name: " + product.getName());
+        System.out.println("Price: $" + product.getPrice());
+        
+        // 🔥 Need to check what kind of product it is!
+        if (product instanceof PhysicalBook) {
+            try {
+                System.out.println("Weight: " + product.getWeight() + " kg");
+                System.out.println("Stock: " + product.getInventoryCount());
+            } catch (UnsupportedOperationException e) {
+                // Ignore - shouldn't happen for physical products
+            }
+        }
+        
+        if (product instanceof DigitalCourse) {
+            try {
+                System.out.println("Download: " + product.getDownloadUrl());
+                System.out.println("Size: " + product.getFileSizeInBytes() + " bytes");
+            } catch (UnsupportedOperationException e) {
+                // Ignore - shouldn't happen for digital products
+            }
+        }
+        
+        // 🔥 This defeats the purpose of polymorphism!
+    }
+    
+    /**
+     * 🔥 PROBLEM: Methods that should work on all products can fail
+     */
+    public void calculateShippingCost(Product product) {
+        try {
+            double weight = product.getWeight(); // 💥 Might throw exception!
+            double cost = weight * 5.0;
+            System.out.println("Shipping cost: $" + cost);
+        } catch (UnsupportedOperationException e) {
+            System.out.println("This product cannot be shipped");
+        }
+    }
+}
+```
+
+### 🔥 Problems with Fat Interface
+
+| Problem | Impact | Why It's Bad |
+|---------|--------|--------------|
+| **20+ forced implementations** | Code pollution | 😱 Cluttered with exceptions |
+| **Meaningless methods** | Confusion | 🤔 What's real, what's fake? |
+| **Runtime exceptions** | Crashes | 💥 UnsupportedOperationException everywhere |
+| **Can't trust interface** | Type checking needed | 🔍 instanceof all over |
+| **Hard to test** | Low coverage | 🧪 Testing exceptions instead of logic |
+| **Violates LSP** | Broken polymorphism | 🔄 Can't substitute freely |
+| **Maintenance nightmare** | High cost | 💸 Changes affect everyone |
+
+---
+
+### ✅ GOOD Example - Segregated Interfaces
+
+```java
+/**
+ * ✨ SOLUTION: Split fat interface into multiple role-specific interfaces
+ * Each product type implements ONLY what it needs!
+ */
+
+// ========================================
+// 1️⃣ BASE INTERFACE - All products need this
+// ========================================
+
+/**
+ * ✨ Core product information - EVERY product has these
+ */
+public interface Product {
+    String getId();
+    String getName();
+    String getDescription();
+    double getPrice();
+    String getCategory();
+    ProductType getType();
+}
+
+public enum ProductType {
+    PHYSICAL, DIGITAL, SERVICE, RENTAL, PERISHABLE
+}
+
+// ========================================
+// 2️⃣ ROLE INTERFACES - Specific capabilities
+// ========================================
+
+/**
+ * ✨ For products that have physical dimensions and weight
+ * Only implemented by physical products
+ */
+public interface PhysicalProduct extends Product {
+    double getWeight();
+    Dimensions getDimensions();
+    String getShippingClass();
+}
+
+@Data
+@AllArgsConstructor
+public class Dimensions {
+    private double length;
+    private double width;
+    private double height;
+    
+    public double getVolume() {
+        return length * width * height;
+    }
+}
+
+/**
+ * ✨ For products that have inventory/stock
+ * Physical products need this, digital don't
+ */
+public interface Stockable {
+    int getInventoryCount();
+    void updateInventory(int quantity);
+    boolean isInStock();
+    int getReorderLevel();
+}
+
+/**
+ * ✨ For products that can be downloaded
+ * Only digital products need this
+ */
+public interface Downloadable extends Product {
+    String getDownloadUrl();
+    long getFileSizeInBytes();
+    String getFileFormat();
+    int getDownloadLimit();
+}
+
+/**
+ * ✨ For products that expire
+ * Digital downloads, subscriptions, food items
+ */
+public interface Expirable {
+    LocalDateTime getExpirationDate();
+    boolean isExpired();
+    int getDaysUntilExpiration();
+}
+
+/**
+ * ✨ For subscription-based products
+ * Services, memberships, subscriptions
+ */
+public interface Subscribable extends Product {
+    int getDurationInDays();
+    boolean isRecurring();
+    double getRenewalPrice();
+    LocalDateTime getNextBillingDate();
+    SubscriptionStatus getStatus();
+}
+
+public enum SubscriptionStatus {
+    ACTIVE, PAUSED, CANCELLED, EXPIRED
+}
+
+/**
+ * ✨ For products that can be customized
+ * T-shirts, mugs, jewelry, etc.
+ */
+public interface Customizable {
+    List<CustomizationOption> getCustomizationOptions();
+    void addCustomization(String optionId, String value);
+    boolean isCustomizable();
+    double getCustomizationUpcharge();
+}
+
+@Data
+@AllArgsConstructor
+public class CustomizationOption {
+    private String id;
+    private String name;
+    private List<String> availableValues;
+    private double additionalCost;
+}
+
+/**
+ * ✨ For products that can be rented
+ * Equipment, vehicles, tools
+ */
+public interface Rentable extends Product {
+    double getDailyRentalRate();
+    double getSecurityDeposit();
+    int getMaxRentalDays();
+    boolean isAvailableForRent(LocalDate startDate, LocalDate endDate);
+}
+
+/**
+ * ✨ For perishable items
+ * Food, flowers, medicine
+ */
+public interface Perishable {
+    LocalDate getExpiryDate();
+    String getStorageInstructions();
+    boolean requiresRefrigeration();
+    int getShelfLifeDays();
+}
+
+// ========================================
+// 3️⃣ CONCRETE IMPLEMENTATIONS - Clean and focused!
+// ========================================
+
+/**
+ * ✨ Physical Book - Only implements what it needs!
+ */
+@Data
+public class PhysicalBook implements PhysicalProduct, Stockable {
+    
+    private String id;
+    private String name;
+    private String description;
+    private double price;
+    private String category;
+    private String isbn;
+    private String author;
+    
+    // Physical attributes
+    private double weight;
+    private Dimensions dimensions;
+    private String shippingClass;
+    
+    // Stock management
+    private int inventoryCount;
+    private int reorderLevel;
+    
+    @Override
+    public ProductType getType() {
+        return ProductType.PHYSICAL;
+    }
+    
+    @Override
+    public boolean isInStock() {
+        return inventoryCount > 0;
+    }
+    
+    @Override
+    public void updateInventory(int quantity) {
+        this.inventoryCount += quantity;
+        
+        if (inventoryCount < reorderLevel) {
+            System.out.println("⚠️ Low stock alert for: " + name);
+        }
+    }
+    
+    // ✨ NO empty methods!
+    // ✨ NO exceptions!
+    // ✨ Everything makes sense for a physical book!
+}
+
+/**
+ * ✨ eBook - Different interface combination!
+ */
+@Data
+public class EBook implements Downloadable, Expirable {
+    
+    private String id;
+    private String name;
+    private String description;
+    private double price;
+    private String category;
+    private String isbn;
+    private String author;
+    
+    // Digital attributes
+    private String downloadUrl;
+    private long fileSizeInBytes;
+    private String fileFormat; // PDF, EPUB, MOBI
+    private int downloadLimit;
+    
+    // Expiration (rental or time-limited access)
+    private LocalDateTime expirationDate;
+    
+    @Override
+    public ProductType getType() {
+        return ProductType.DIGITAL;
+    }
+    
+    @Override
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expirationDate);
+    }
+    
+    @Override
+    public int getDaysUntilExpiration() {
+        return (int) ChronoUnit.DAYS.between(LocalDateTime.now(), expirationDate);
+    }
+    
+    // ✨ NO inventory methods (doesn't need them)!
+    // ✨ NO physical dimension methods!
+    // ✨ Only implements what makes sense!
+}
+
+/**
+ * ✨ Online Course - Combination of digital + subscription
+ */
+@Data
+public class OnlineCourse implements Downloadable, Subscribable {
+    
+    private String id;
+    private String name;
+    private String description;
+    private double price;
+    private String category;
+    private String instructor;
+    
+    // Digital content
+    private String downloadUrl;
+    private long fileSizeInBytes;
+    private String fileFormat;
+    private int downloadLimit;
+    
+    // Subscription details
+    private int durationInDays;
+    private boolean recurring;
+    private double renewalPrice;
+    private LocalDateTime nextBillingDate;
+    private SubscriptionStatus status;
+    
+    @Override
+    public ProductType getType() {
+        return ProductType.SERVICE;
+    }
+    
+    // ✨ Implements BOTH Downloadable AND Subscribable perfectly!
+    // ✨ NO forced methods!
+}
+
+/**
+ * ✨ Custom T-Shirt - Physical + Stockable + Customizable
+ */
+@Data
+public class CustomTShirt implements PhysicalProduct, Stockable, Customizable {
+    
+    private String id;
+    private String name;
+    private String description;
+    private double price;
+    private String category;
+    
+    // Physical attributes
+    private double weight;
+    private Dimensions dimensions;
+    private String shippingClass;
+    
+    // Stock
+    private int inventoryCount;
+    private int reorderLevel;
+    
+    // Customization
+    private List<CustomizationOption> customizationOptions;
+    private Map<String, String> appliedCustomizations;
+    
+    public CustomTShirt() {
+        this.customizationOptions = Arrays.asList(
+            new CustomizationOption("size", "Size", 
+                Arrays.asList("S", "M", "L", "XL", "XXL"), 0),
+            new CustomizationOption("color", "Color",
+                Arrays.asList("Red", "Blue", "Green", "Black", "White"), 0),
+            new CustomizationOption("text", "Custom Text",
+                Collections.emptyList(), 5.0)
+        );
+        this.appliedCustomizations = new HashMap<>();
+    }
+    
+    @Override
+    public ProductType getType() {
+        return ProductType.PHYSICAL;
+    }
+    
+    @Override
+    public boolean isInStock() {
+        return inventoryCount > 0;
+    }
+    
+    @Override
+    public void updateInventory(int quantity) {
+        this.inventoryCount += quantity;
+    }
+    
+    @Override
+    public void addCustomization(String optionId, String value) {
+        appliedCustomizations.put(optionId, value);
+    }
+    
+    @Override
+    public boolean isCustomizable() {
+        return true;
+    }
+    
+    @Override
+    public double getCustomizationUpcharge() {
+        return customizationOptions.stream()
+            .filter(opt -> appliedCustomizations.containsKey(opt.getId()))
+            .mapToDouble(CustomizationOption::getAdditionalCost)
+            .sum();
+    }
+    
+    // ✨ Implements THREE interfaces naturally!
+    // ✨ All methods make perfect sense!
+}
+
+/**
+ * ✨ Camera Rental - Physical + Rentable
+ */
+@Data
+public class CameraRental implements PhysicalProduct, Rentable {
+    
+    private String id;
+    private String name;
+    private String description;
+    private double price; // Purchase price
+    private String category;
+    
+    // Physical attributes
+    private double weight;
+    private Dimensions dimensions;
+    private String shippingClass;
+    
+    // Rental details
+    private double dailyRentalRate;
+    private double securityDeposit;
+    private int maxRentalDays;
+    private List<RentalPeriod> rentedPeriods;
+    
+    public CameraRental() {
+        this.rentedPeriods = new ArrayList<>();
+    }
+    
+    @Override
+    public ProductType getType() {
+        return ProductType.RENTAL;
+    }
+    
+    @Override
+    public boolean isAvailableForRent(LocalDate startDate, LocalDate endDate) {
+        return rentedPeriods.stream()
+            .noneMatch(period -> period.overlaps(startDate, endDate));
+    }
+    
+    // ✨ Perfect for rental equipment!
+}
+
+@Data
+@AllArgsConstructor
+class RentalPeriod {
+    private LocalDate startDate;
+    private LocalDate endDate;
+    
+    public boolean overlaps(LocalDate start, LocalDate end) {
+        return !endDate.isBefore(start) && !startDate.isAfter(end);
+    }
+}
+
+/**
+ * ✨ Fresh Produce - Physical + Stockable + Perishable
+ */
+@Data
+public class FreshProduce implements PhysicalProduct, Stockable, Perishable {
+    
+    private String id;
+    private String name;
+    private String description;
+    private double price;
+    private String category;
+    
+    // Physical attributes
+    private double weight;
+    private Dimensions dimensions;
+    private String shippingClass;
+    
+    // Stock
+    private int inventoryCount;
+    private int reorderLevel;
+    
+    // Perishable attributes
+    private LocalDate expiryDate;
+    private String storageInstructions;
+    private boolean requiresRefrigeration;
+    private int shelfLifeDays;
+    
+    @Override
+    public ProductType getType() {
+        return ProductType.PERISHABLE;
+    }
+    
+    @Override
+    public boolean isInStock() {
+        // Not in stock if expired OR quantity is zero
+        return inventoryCount > 0 && !isExpired();
+    }
+    
+    @Override
+    public void updateInventory(int quantity) {
+        this.inventoryCount += quantity;
+    }
+    
+    private boolean isExpired() {
+        return LocalDate.now().isAfter(expiryDate);
+    }
+    
+    // ✨ Perfect combination for perishable goods!
+}
+
+/**
+ * ✨ Netflix-like Subscription - Pure subscription
+ */
+@Data
+public class StreamingSubscription implements Subscribable {
+    
+    private String id;
+    private String name;
+    private String description;
+    private double price;
+    private String category;
+    
+    // Subscription details
+    private int durationInDays;
+    private boolean recurring;
+    private double renewalPrice;
+    private LocalDateTime nextBillingDate;
+    private SubscriptionStatus status;
+    private String planType; // Basic, Standard, Premium
+    
+    @Override
+    public ProductType getType() {
+        return ProductType.SERVICE;
+    }
+    
+    // ✨ NO download methods!
+    // ✨ NO physical attributes!
+    // ✨ NO inventory!
+    // ✨ Only subscription logic - PERFECT!
+}
+
+// ========================================
+// 4️⃣ SERVICE LAYER - Type-safe and clean!
+// ========================================
+
+/**
+ * ✨ Product Service - No more type checking nightmares!
+ */
+@Service
+public class ProductService {
+    
+    /**
+     * ✨ Works with ANY product - uses only base interface
+     */
+    public void displayBasicInfo(Product product) {
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        System.out.println("📦 Product: " + product.getName());
+        System.out.println("💰 Price: $" + product.getPrice());
+        System.out.println("🏷️ Category: " + product.getCategory());
+        System.out.println("📋 Type: " + product.getType());
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    }
+    
+    /**
+     * ✨ Works ONLY with physical products - type safe!
+     */
+    public double calculateShippingCost(PhysicalProduct product) {
+        double weight = product.getWeight();
+        Dimensions dims = product.getDimensions();
+        double volume = dims.getVolume();
+        
+        double baseCost = 5.0;
+        double weightCost = weight * 2.0;
+        double volumeCost = volume * 0.1;
+        
+        return baseCost + weightCost + volumeCost;
+    }
+    
+    /**
+     * ✨ Works ONLY with stockable products - type safe!
+     */
+    public void checkAndReorderStock(Stockable product) {
+        if (!product.isInStock()) {
+            System.out.println("⚠️ Out of stock! Reordering...");
+            // Trigger reorder logic
+        } else if (product.getInventoryCount() < product.getReorderLevel()) {
+            System.out.println("⚠️ Low stock warning!");
+        }
+    }
+    
+    /**
+     * ✨ Works ONLY with downloadable products - type safe!
+     */
+    public DownloadInfo getDownloadInfo(Downloadable product) {
+        return DownloadInfo.builder()
+            .url(product.getDownloadUrl())
+            .fileSize(product.getFileSizeInBytes())
+            .format(product.getFileFormat())
+            .remainingDownloads(product.getDownloadLimit())
+            .build();
+    }
+    
+    /**
+     * ✨ Works ONLY with expirable products - type safe!
+     */
+    public void checkExpiration(Expirable product) {
+        if (product.isExpired()) {
+            System.out.println("❌ Product has expired!");
+        } else {
+            int daysLeft = product.getDaysUntilExpiration();
+            if (daysLeft <= 7) {
+                System.out.println("⚠️ Expiring soon: " + daysLeft + " days left");
+            }
+        }
+    }
+    
+    /**
+     * ✨ Works ONLY with subscribable products - type safe!
+     */
+    public void processSubscriptionRenewal(Subscribable product) {
+        if (product.isRecurring() && 
+            LocalDateTime.now().isAfter(product.getNextBillingDate())) {
+            
+            System.out.println("💳 Processing renewal: $" + product.getRenewalPrice());
+            // Process payment
+        }
+    }
+    
+    /**
+     * ✨ Works ONLY with customizable products - type safe!
+     */
+    public double calculateCustomizationCost(Customizable product) {
+        return product.getCustomizationUpcharge();
+    }
+    
+    /**
+     * ✨ Works ONLY with rentable products - type safe!
+     */
+    public double calculateRentalCost(Rentable product, int days) {
+        if (days > product.getMaxRentalDays()) {
+            throw new IllegalArgumentException(
+                "Rental period exceeds maximum: " + product.getMaxRentalDays() + " days"
+            );
+        }
+        
+        return (product.getDailyRentalRate() * days) + product.getSecurityDeposit();
+    }
+}
+
+// ========================================
+// 5️⃣ SHOPPING CART - Handles all product types elegantly!
+// ========================================
+
+@Service
+public class ShoppingCartService {
+    
+    @Autowired
+    private ProductService productService;
+    
+    /**
+     * ✨ Calculate total - works with ANY product type!
+     */
+    public double calculateCartTotal(List<Product> products) {
+        double subtotal = products.stream()
+            .mapToDouble(Product::getPrice)
+            .sum();
+        
+        // Add customization costs
+        double customizationCost = products.stream()
+            .filter(p -> p instanceof Customizable)
+            .mapToDouble(p -> ((Customizable) p).getCustomizationUpcharge())
+            .sum();
+        
+        // Calculate shipping only for physical products
+        double shippingCost = products.stream()
+            .filter(p -> p instanceof PhysicalProduct)
+            .mapToDouble(p -> productService.calculateShippingCost((PhysicalProduct) p))
+            .sum();
+        
+        return subtotal + customizationCost + shippingCost;
+    }
+    
+    /**
+     * ✨ Check availability - handles different product types correctly
+     */
+    public boolean areAllItemsAvailable(List<Product> products) {
+        
+        // Check stock for physical products
+        boolean stockAvailable = products.stream()
+            .filter(p -> p instanceof Stockable)
+            .allMatch(p -> ((Stockable) p).isInStock());
+        
+        // Check expiration for expirable products
+        boolean notExpired = products.stream()
+            .filter(p -> p instanceof Expirable)
+            .noneMatch(p -> ((Expirable) p).isExpired());
+        
+        return stockAvailable && notExpired;
+    }
+    
+    /**
+     * ✨ Generate order summary with product-specific details
+     */
+    public OrderSummary generateOrderSummary(List<Product> products) {
+        OrderSummary summary = new OrderSummary();
+        
+        for (Product product : products) {
+            ProductSummary prodSummary = new ProductSummary();
+            prodSummary.setName(product.getName());
+            prodSummary.setPrice(product.getPrice());
+            
+            // Add type-specific information
+            if (product instanceof PhysicalProduct) {
+                PhysicalProduct pp = (PhysicalProduct) product;
+                prodSummary.setShipping(productService.calculateShippingCost(pp));
+                prodSummary.setWeight(pp.getWeight());
+            }
+            
+            if (product instanceof Downloadable) {
+                prodSummary.setDownloadable(true);
+            }
+            
+            if (product instanceof Customizable) {
+                Customizable cp = (Customizable) product;
+                prodSummary.setCustomizationCost(cp.getCustomizationUpcharge());
+            }
+            
+            if (product instanceof Expirable) {
+                Expirable ep = (Expirable) product;
+                prodSummary.setExpiresIn(ep.getDaysUntilExpiration());
+            }
+            
+            summary.addProduct(prodSummary);
+        }
+        
+        return summary;
+    }
+}
+
+@Data
+class OrderSummary {
+    private List<ProductSummary> products = new ArrayList<>();
+    private double total;
+    
+    public void addProduct(ProductSummary product) {
+        products.add(product);
+        total += product.getPrice() + product.getShipping() + product.getCustomizationCost();
+    }
+}
+
+@Data
+class ProductSummary {
+    private String name;
+    private double price;
+    private double shipping;
+    private double customizationCost;
+    private double weight;
+    private boolean downloadable;
+    private int expiresIn;
+}
+
+@Data
+@Builder
+class DownloadInfo {
+    private String url;
+    private long fileSize;
+    private String format;
+    private int remainingDownloads;
+}
+```
+
+---
+
+### 📊 Comparison: Before vs After
+
+| Aspect | ❌ Fat Interface | ✅ Segregated Interfaces |
+|--------|-----------------|-------------------------|
+| **Interface methods** | 30+ methods | 3-7 methods per interface |
+| **Empty implementations** | 20+ per class | 0 (zero!) |
+| **Exception throwing** | Everywhere | None |
+| **Type checking needed** | Constant instanceof | Minimal, type-safe |
+| **LSP compliance** | Violated | Perfect |
+| **Code clarity** | Confusing | Crystal clear |
+| **Maintainability** | Nightmare | Easy |
+| **Testing** | Hard | Simple |
+
+---
+
+### 🎯 Real Impact Story
+
+```java
+/**
+ * 📈 BEFORE ISP (Fat Interface):
+ * 
+ * - Product interface: 32 methods
+ * - PhysicalBook: 18 empty/throwing methods
+ * - EBook: 15 empty/throwing methods
+ * - 47 production bugs in 6 months
+ * - 12 UnsupportedOperationException crashes
+ * - Team morale: 😢 "I hate this codebase"
+ * - Time to add new product type: 3 days
+ * 
+ * 📈 AFTER ISP (Segregated):
+ * 
+ * - Base Product interface: 6 methods
+ * - 7 role interfaces: 3-7 methods each
+ * - Zero empty/throwing methods
+ * - 3 bugs in 6 months (95% reduction!)
+ * - Zero runtime exceptions
+ * - Team morale: 😄 "Clean and elegant!"
+ * - Time to add new product type: 2 hours
+ * 
+ * 💰 BUSINESS IMPACT:
+ * - 95% reduction in product-related bugs
+ * - 90% faster feature development
+ * - $50,000 saved in development time
+ * - Zero customer-facing crashes
+ */
+```
+
+---
+
+## 👥 Scenario 2: User Role Management
+
+### ❌ BAD Example - Fat User Interface
+
+```java
+/**
+ * 🚫 VIOLATION: One User interface for all user types
+ */
+public interface User {
+    
+    // Basic user info - Everyone needs ✅
+    String getUserId();
+    String getEmail();
+    String getFullName();
+    
+    // Customer-specific - Only customers need! ⚠️
+    List<Order> getOrderHistory();
+    ShoppingCart getCart();
+    List<Address> getSavedAddresses();
+    PaymentMethod getDefaultPaymentMethod();
+    int getLoyaltyPoints();
+    WishList getWishList();
+    
+    // Vendor-specific - Only vendors need! ⚠️
+    String getStoreName();
+    List<Product> getProductCatalog();
+    double getCommissionRate();
+    BankAccount getPayoutAccount();
+    List<VendorOrder> getPendingOrders();
+    
+    // Admin-specific - Only admins need! ⚠️
+    List<Permission> getPermissions();
+    boolean canAccessAdminPanel();
+    boolean canManageUsers();
+    boolean canManageProducts();
+    boolean canViewReports();
+    void assignRole(String userId, Role role);
+    
+    // Guest-specific - Only guests need! ⚠️
+    String getSessionId();
+    LocalDateTime getSessionExpiry();
+    void convertToRegisteredUser(String password);
+}
+
+/**
+ * 🔥 PROBLEM: Customer forced to implement vendor/admin methods
+ */
+public class Customer implements User {
+    
+    private String userId;
+    private String email;
+    private String fullName;
+    private List<Order> orderHistory;
+    private ShoppingCart cart;
+    
+    // ✅ Customer methods implemented properly
+    @Override
+    public List<Order> getOrderHistory() {
+        return orderHistory;
+    }
+    
+    @Override
+    public ShoppingCart getCart() {
+        return cart;
+    }
+    
+    // 🔥 Forced to implement vendor methods!
+    @Override
+    public String getStoreName() {
+        throw new UnsupportedOperationException("Customers don't have stores!");
+    }
+    
+    @Override
+    public List<Product> getProductCatalog() {
+        throw new UnsupportedOperationException("Customers don't have product catalogs!");
+    }
+    
+    @Override
+    public double getCommissionRate() {
+        throw new UnsupportedOperationException("Customers don't have commission rates!");
+    }
+    
+    // 🔥 Forced to implement admin methods!
+    @Override
+    public boolean canAccessAdminPanel() {
+        return false; // Meaningless
+    }
+    
+    @Override
+    public void assignRole(String userId, Role role) {
+        throw new UnsupportedOperationException("Customers can't assign roles!");
+    }
+    
+    // ... 10+ more forced methods
+}
+```
+
+---
+
+### ✅ GOOD Example - Segregated User Interfaces
+
+```java
+/**
+ * ✨ SOLUTION: Role-based interface segregation
+ */
+
+// ========================================
+// 1️⃣ BASE USER - Everyone has this
+// ========================================
+
+public interface User {
+    String getUserId();
+    String getEmail();
+    String getFullName();
+    String getPhoneNumber();
+    UserType getUserType();
+    LocalDateTime getCreatedAt();
+    boolean isActive();
+}
+
+public enum UserType {
+    CUSTOMER, VENDOR, ADMIN, GUEST, SUPPORT_AGENT
+}
+
+// ========================================
+// 2️⃣ ROLE-SPECIFIC INTERFACES
+// ========================================
+
+/**
+ * ✨ Shopping capabilities - Customers and Guests
+ */
+public interface Shopper extends User {
+    ShoppingCart getCart();
+    void addToCart(Product product, int quantity);
+    void removeFromCart(String productId);
+    double getCartTotal();
+}
+
+/**
+ * ✨ Order management - Customers who can place orders
+ */
+public interface OrderPlacer extends Shopper {
+    List<Order> getOrderHistory();
+    Order placeOrder(OrderRequest request);
+    void cancelOrder(String orderId);
+    Order trackOrder(String orderId);
+}
+
+/**
+ * ✨ Customer loyalty features
+ */
+public interface LoyaltyMember {
+    int getLoyaltyPoints();
+    void addLoyaltyPoints(int points);
+    void redeemPoints(int points);
+    LoyaltyTier getTier();
+    double getDiscountPercentage();
+}
+
+public enum LoyaltyTier {
+    BRONZE(0, 0.05),
+    SILVER(100, 0.10),
+    GOLD(500, 0.15),
+    PLATINUM(1000, 0.20);
+    
+    private final int minPoints;
+    private final double discountPercentage;
+    
+    LoyaltyTier(int minPoints, double discountPercentage) {
+        this.minPoints = minPoints;
+        this.discountPercentage = discountPercentage;
+    }
+    
+    public double getDiscountPercentage() { return discountPercentage; }
+}
+
+/**
+ * ✨ Profile management - Registered users
+ */
+public interface ProfileOwner extends User {
+    List<Address> getSavedAddresses();
+    void addAddress(Address address);
+    void removeAddress(String addressId);
+    List<PaymentMethod> getSavedPaymentMethods();
+    void addPaymentMethod(PaymentMethod method);
+    PaymentMethod getDefaultPaymentMethod();
+}
+
+/**
+ * ✨ Wishlist capabilities
+ */
+public interface WishlistOwner {
+    WishList getWishList();
+    void addToWishList(Product product);
+    void removeFromWishList(String productId);
+    void moveWishListToCart(String productId);
+}
+
+/**
+ * ✨ Vendor capabilities - Sellers
+ */
+public interface Seller extends User {
+    String getStoreName();
+    String getStoreDescription();
+    List<Product> getProductCatalog();
+    void addProduct(Product product);
+    void updateProduct(String productId, Product product);
+    void removeProduct(String productId);
+    List<VendorOrder> getPendingOrders();
+    void fulfillOrder(String orderId);
+}
+
+/**
+ * ✨ Financial tracking - Vendors
+ */
+public interface Earner {
+    double getCommissionRate();
+    BankAccount getPayoutAccount();
+    List<Transaction> getTransactionHistory();
+    double getTotalEarnings();
+    double getPendingPayouts();
+}
+
+/**
+ * ✨ Admin capabilities
+ */
+public interface Administrator extends User {
+    Set<Permission> getPermissions();
+    boolean hasPermission(Permission permission);
+    void assignRole(String userId, Role role);
+    void revokeRole(String userId, Role role);
+}
+
+public enum Permission {
+    MANAGE_USERS,
+    MANAGE_PRODUCTS,
+    MANAGE_ORDERS,
+    VIEW_REPORTS,
+    MANAGE_SETTINGS,
+    MODERATE_CONTENT,
+    MANAGE_PROMOTIONS
+}
+
+/**
+ * ✨ Content moderation - Admins and Moderators
+ */
+public interface ContentModerator {
+    List<Review> getPendingReviews();
+    void approveReview(String reviewId);
+    void rejectReview(String reviewId, String reason);
+    List<ReportedContent> getReportedContent();
+    void takeAction(String contentId, ModerationAction action);
+}
+
+public enum ModerationAction {
+    APPROVE, REJECT, DELETE, FLAG, WARNING
+}
+
+/**
+ * ✨ Guest session management
+ */
+public interface GuestSession {
+    String getSessionId();
+    LocalDateTime getSessionExpiry();
+    boolean isExpired();
+    void extendSession(int minutes);
+    RegisteredCustomer convertToRegistered(RegistrationData data);
+}
+
+// ========================================
+// 3️⃣ CONCRETE IMPLEMENTATIONS - Clean!
+// ========================================
+
+/**
+ * ✨ Regular Customer - Implements only what needed!
+ */
+@Data
+public class RegisteredCustomer implements User, OrderPlacer, LoyaltyMember, 
+                                           ProfileOwner, WishlistOwner {
+    
+    // Base user info
+    private String userId;
+    private String email;
+    private String fullName;
+    private String phoneNumber;
+    private LocalDateTime createdAt;
+    private boolean active;
+    
+    // Shopping
+    private ShoppingCart cart;
+    private List<Order> orderHistory;
+    
+    // Loyalty
+    private int loyaltyPoints;
+    
+    // Profile
+    private List<Address> savedAddresses;
+    private List<PaymentMethod> savedPaymentMethods;
+    private String defaultPaymentMethodId;
+    
+    // Wishlist
+    private WishList wishList;
+    
+    @Override
+    public UserType getUserType() {
+        return UserType.CUSTOMER;
+    }
+    
+    @Override
+    public void addToCart(Product product, int quantity) {
+        cart.addItem(product, quantity);
+    }
+    
+    @Override
+    public void removeFromCart(String productId) {
+        cart.removeItem(productId);
+    }
+    
+    @Override
+    public double getCartTotal() {
+        return cart.calculateTotal();
+    }
+    
+    @Override
+    public Order placeOrder(OrderRequest request) {
+        // Order placement logic
+        Order order = new Order(userId, cart, request);
+        orderHistory.add(order);
+        
+        // Award loyalty points
+        int points = (int) (order.getTotal() / 10); // 1 point per $10
+        addLoyaltyPoints(points);
+        
+        // Clear cart
+        cart.clear();
+        
+        return order;
+    }
+    
+    @Override
+    public void cancelOrder(String orderId) {
+        orderHistory.stream()
+            .filter(o -> o.getId().equals(orderId))
+            .findFirst()
+            .ifPresent(Order::cancel);
+    }
+    
+    @Override
+    public Order trackOrder(String orderId) {
+        return orderHistory.stream()
+            .filter(o -> o.getId().equals(orderId))
+            .findFirst()
+            .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+    
+    @Override
+    public void addLoyaltyPoints(int points) {
+        this.loyaltyPoints += points;
+    }
+    
+    @Override
+    public void redeemPoints(int points) {
+        if (points > loyaltyPoints) {
+            throw new InsufficientPointsException();
+        }
+        this.loyaltyPoints -= points;
+    }
+    
+    @Override
+    public LoyaltyTier getTier() {
+        return Arrays.stream(LoyaltyTier.values())
+            .filter(tier -> loyaltyPoints >= tier.minPoints)
+            .reduce((first, second) -> second) // Get highest tier
+            .orElse(LoyaltyTier.BRONZE);
+    }
+    
+    @Override
+    public double getDiscountPercentage() {
+        return getTier().getDiscountPercentage();
+    }
+    
+    @Override
+    public void addAddress(Address address) {
+        savedAddresses.add(address);
+    }
+    
+    @Override
+    public void removeAddress(String addressId) {
+        savedAddresses.removeIf(a -> a.getId().equals(addressId));
+    }
+    
+    @Override
+    public void addPaymentMethod(PaymentMethod method) {
+        savedPaymentMethods.add(method);
+    }
+    
+    @Override
+    public PaymentMethod getDefaultPaymentMethod() {
+        return savedPaymentMethods.stream()
+            .filter(pm -> pm.getId().equals(defaultPaymentMethodId))
+            .findFirst()
+            .orElse(null);
+    }
+    
+    @Override
+    public void addToWishList(Product product) {
+        wishList.addItem(product);
+    }
+    
+    @Override
+    public void removeFromWishList(String productId) {
+        wishList.removeItem(productId);
+    }
+    
+    @Override
+    public void moveWishListToCart(String productId) {
+        Product product = wishList.getItem(productId);
+        wishList.removeItem(productId);
+        cart.addItem(product, 1);
+    }
+    
+    // ✨ NO vendor methods!
+    // ✨ NO admin methods!
+    // ✨ NO guest session methods!
+    // ✨ Everything makes sense for a customer!
+}
+
+/**
+ * ✨ Vendor Account - Different capabilities!
+ */
+@Data
+public class VendorAccount implements User, Seller, Earner, ProfileOwner {
+    
+    // Base user info
+    private String userId;
+    private String email;
+    private String fullName;
+    private String phoneNumber;
+    private LocalDateTime createdAt;
+    private boolean active;
+    
+    // Vendor info
+    private String storeName;
+    private String storeDescription;
+    private List<Product> productCatalog;
+    private List<VendorOrder> pendingOrders;
+    
+    // Financial
+    private double commissionRate;
+    private BankAccount payoutAccount;
+    private List<Transaction> transactionHistory;
+    
+    // Profile
+    private List<Address> savedAddresses;
+    private List<PaymentMethod> savedPaymentMethods;
+    private String defaultPaymentMethodId;
+    
+    @Override
+    public UserType getUserType() {
+        return UserType.VENDOR;
+    }
+    
+    @Override
+    public void addProduct(Product product) {
+        productCatalog.add(product);
+    }
+    
+    @Override
+    public void updateProduct(String productId, Product product) {
+        productCatalog.removeIf(p -> p.getId().equals(productId));
+        productCatalog.add(product);
+    }
+    
+    @Override
+    public void removeProduct(String productId) {
+        productCatalog.removeIf(p -> p.getId().equals(productId));
+    }
+    
+    @Override
+    public void fulfillOrder(String orderId) {
+        pendingOrders.stream()
+            .filter(o -> o.getId().equals(orderId))
+            .findFirst()
+            .ifPresent(order -> {
+                order.markAsFulfilled();
+                pendingOrders.remove(order);
+                
+                // Record transaction
+                double earnings = order.getTotal() * (1 - commissionRate);
+                Transaction transaction = new Transaction(orderId, earnings);
+                transactionHistory.add(transaction);
+            });
+    }
+    
+    @Override
+    public double getTotalEarnings() {
+        return transactionHistory.stream()
+            .mapToDouble(Transaction::getAmount)
+            .sum();
+    }
+    
+    @Override
+    public double getPendingPayouts() {
+        return transactionHistory.stream()
+            .filter(t -> !t.isPaidOut())
+            .mapToDouble(Transaction::getAmount)
+            .sum();
+    }
+    
+    // ✨ NO shopping cart methods!
+    // ✨ NO loyalty points!
+    // ✨ NO admin methods!
+    // ✨ Perfect for vendors!
+}
+
+/**
+ * ✨ Admin User - Administrative capabilities
+ */
+@Data
+public class AdminUser implements User, Administrator, ContentModerator {
+    
+    // Base user info
+    private String userId;
+    private String email;
+    private String fullName;
+    private String phoneNumber;
+    private LocalDateTime createdAt;
+    private boolean active;
+    
+    // Admin
+    private Set<Permission> permissions;
+    
+    // Moderation
+    private List<Review> pendingReviews;
+    private List<ReportedContent> reportedContent;
+    
+    @Override
+    public UserType getUserType() {
+        return UserType.ADMIN;
+    }
+    
+    @Override
+    public boolean hasPermission(Permission permission) {
+        return permissions.contains(permission);
+    }
+    
+    @Override
+    public void assignRole(String userId, Role role) {
+        if (!hasPermission(Permission.MANAGE_USERS)) {
+            throw new UnauthorizedException("No permission to manage users");
+        }
+        // Assignment logic
+    }
+    
+    @Override
+    public void revokeRole(String userId, Role role) {
+        if (!hasPermission(Permission.MANAGE_USERS)) {
+            throw new UnauthorizedException("No permission to manage users");
+        }
+        // Revocation logic
+    }
+    
+    @Override
+    public void approveReview(String reviewId) {
+        pendingReviews.stream()
+            .filter(r -> r.getId().equals(reviewId))
+            .findFirst()
+            .ifPresent(review -> {
+                review.setApproved(true);
+                pendingReviews.remove(review);
+            });
+    }
+    
+    @Override
+    public void rejectReview(String reviewId, String reason) {
+        pendingReviews.stream()
+            .filter(r -> r.getId().equals(reviewId))
+            .findFirst()
+            .ifPresent(review -> {
+                review.setRejected(true);
+                review.setRejectionReason(reason);
+                pendingReviews.remove(review);
+            });
+    }
+    
+    @Override
+    public void takeAction(String contentId, ModerationAction action) {
+        // Moderation action logic
+    }
+    
+    // ✨ NO shopping cart!
+    // ✨ NO vendor methods!
+    // ✨ NO loyalty points!
+    // ✨ Perfect for admins!
+}
+
+/**
+ * ✨ Guest User - Minimal capabilities
+ */
+@Data
+public class GuestUser implements User, Shopper, GuestSession {
+    
+    // Base user info
+    private String userId;
+    private String email; // Optional for guests
+    private String fullName;
+    private String phoneNumber;
+    private LocalDateTime createdAt;
+    private boolean active;
+    
+    // Guest session
+    private String sessionId;
+    private LocalDateTime sessionExpiry;
+    
+    // Shopping
+    private ShoppingCart cart;
+    
+    @Override
+    public UserType getUserType() {
+        return UserType.GUEST;
+    }
+    
+    @Override
+    public void addToCart(Product product, int quantity) {
+        if (isExpired()) {
+            throw new SessionExpiredException();
+        }
+        cart.addItem(product, quantity);
+    }
+    
+    @Override
+    public void removeFromCart(String productId) {
+        cart.removeItem(productId);
+    }
+    
+    @Override
+    public double getCartTotal() {
+        return cart.calculateTotal();
+    }
+    
+    @Override
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(sessionExpiry);
+    }
+    
+    @Override
+    public void extendSession(int minutes) {
+        sessionExpiry = sessionExpiry.plusMinutes(minutes);
+    }
+    
+    @Override
+    public RegisteredCustomer convertToRegistered(RegistrationData data) {
+        RegisteredCustomer customer = new RegisteredCustomer();
+        customer.setUserId(UUID.randomUUID().toString());
+        customer.setEmail(data.getEmail());
+        customer.setFullName(data.getFullName());
+        customer.setPhoneNumber(data.getPhoneNumber());
+        customer.setCart(this.cart); // Transfer cart
+        customer.setCreatedAt(LocalDateTime.now());
+        customer.setActive(true);
+        
+        return customer;
+    }
+    
+    // ✨ NO order history (guests can't place orders)!
+    // ✨ NO saved addresses!
+    // ✨ NO loyalty points!
+    // ✨ Perfect for guest users!
+}
+
+// ========================================
+// 4️⃣ SERVICE LAYER - Type-safe operations
+// ========================================
+
+@Service
+public class UserService {
+    
+    /**
+     * ✨ Works with ANY user type
+     */
+    public void displayUserInfo(User user) {
+        System.out.println("User: " + user.getFullName());
+        System.out.println("Type: " + user.getUserType());
+        System.out.println("Email: " + user.getEmail());
+    }
+    
+    /**
+     * ✨ Works ONLY with order placers - type safe!
+     */
+    public void processCheckout(OrderPlacer customer, OrderRequest request) {
+        if (customer.getCartTotal() == 0) {
+            throw new EmptyCartException();
+        }
+        
+        Order order = customer.placeOrder(request);
+        System.out.println("✅ Order placed: " + order.getId());
+    }
+    
+    /**
+     * ✨ Works ONLY with loyalty members - type safe!
+     */
+    public void applyLoyaltyDiscount(LoyaltyMember member, double orderAmount) {
+        double discount = orderAmount * member.getDiscountPercentage();
+        System.out.println("💎 Loyalty discount: $" + discount);
+        System.out.println("Tier: " + member.getTier());
+    }
+    
+    /**
+     * ✨ Works ONLY with sellers - type safe!
+     */
+    public void manageInventory(Seller vendor, String productId, int quantity) {
+        Product product = vendor.getProductCatalog().stream()
+            .filter(p -> p.getId().equals(productId))
+            .findFirst()
+            .orElseThrow(() -> new ProductNotFoundException(productId));
+        
+        if (product instanceof Stockable) {
+            ((Stockable) product).updateInventory(quantity);
+        }
+    }
+    
+    /**
+     * ✨ Works ONLY with administrators - type safe!
+     */
+    public void performAdminAction(Administrator admin, String action) {
+        if (action.equals("DELETE_USER") && !admin.hasPermission(Permission.MANAGE_USERS)) {
+            throw new UnauthorizedException("Insufficient permissions");
+        }
+        
+        // Perform admin action
+    }
+    
+    /**
+     * ✨ Convert guest to customer - type safe!
+     */
+    public RegisteredCustomer convertGuestToCustomer(GuestSession guest, RegistrationData data) {
+        if (guest.isExpired()) {
+            throw new SessionExpiredException();
+        }
+        
+        return guest.convertToRegistered(data);
+    }
+}
+```
+
+---
+
+## 🎤 Interview Questions & Answers
+
+### Q1: "What is Interface Segregation Principle?"
+
+**Perfect Answer:**
+```
+ISP states that clients should not be forced to depend on 
+interfaces they don't use. In simpler terms:
+
+"Many small, specific interfaces are better than one large, 
+general-purpose interface"
+
+Real Example:
+
+❌ VIOLATION:
+interface Worker {
+    void work();
+    void eat();
+    void sleep();
+    void getSalary();
+}
+
+class Robot implements Worker {
+    void work() { ... }
+    void eat() { throw new UnsupportedOperationException(); } // 🔥
+    void sleep() { throw new UnsupportedOperationException(); } // 🔥
+    void getSalary() { throw new UnsupportedOperationException(); } // 🔥
+}
+
+✅ SOLUTION:
+interface Workable { void work(); }
+interface Eatable { void eat(); }
+interface Sleepable { void sleep(); }
+interface Payable { void getSalary(); }
+
+class Human implements Workable, Eatable, Sleepable, Payable { ... }
+class Robot implements Workable { ... } // ✨ Only what it needs!
+
+From my e-commerce project:
+We had a Product interface with 32 methods.
+Physical books had to implement digital download methods!
+After ISP refactoring:
+- Base Product: 6 methods
+- PhysicalProduct, Downloadable, Stockable: 3-7 methods each
+- Zero forced implementations
+- 95% reduction in bugs!
+```
+
+---
+
+### Q2: "How do you identify ISP violations?"
+
+**Perfect Answer:**
+```
+Red flags that scream ISP violation:
+
+1️⃣ THROWING EXCEPTIONS
+   class DigitalProduct implements Product {
+       double getWeight() {
+           throw new UnsupportedOperationException(); // 🔥 ISP violation!
+       }
+   }
+
+2️⃣ EMPTY METHOD IMPLEMENTATIONS
+   class GuestUser implements User {
+       List<Order> getOrderHistory() {
+           return Collections.emptyList(); // 🔥 Meaningless!
+       }
+   }
+
+3️⃣ RETURNING NULL OR DEFAULT VALUES
+   class StreamingService implements Subscribable {
+       String getDownloadUrl() {
+           return null; // 🔥 Doesn't apply!
+       }
+   }
+
+4️⃣ MULTIPLE "NOT APPLICABLE" COMMENTS
+   // This method not applicable for digital products
+   // This method not used by guest users
+   // 🔥 If writing these comments, ISP violated!
+
+5️⃣ BOOLEAN FLAGS TO SKIP FUNCTIONALITY
+   void processOrder(Product product) {
+       if (product.isPhysical()) {
+           double weight = product.getWeight(); // Risky!
+       }
+   }
+
+Real Example from Code Review:
+
+❌ FOUND THIS:
+interface PaymentMethod {
+    void processPayment();
+    void processRefund();
+    void authorize();
+    void capture();
+    void setupRecurring();
+}
+
+class CashPayment implements PaymentMethod {
+    void processRefund() { throw new Exception(); } // 🔥
+    void authorize() { throw new Exception(); } // 🔥
+    void capture() { throw new Exception(); } // 🔥
+    void setupRecurring() { throw new Exception(); } // 🔥
+}
+
+✅ REFACTORED TO:
+interface PaymentProcessor { void process(); }
+interface Refundable { void refund(); }
+interface Authorizable { void authorize(); void capture(); }
+interface RecurringCapable { void setupRecurring(); }
+
+class CreditCard implements PaymentProcessor, Refundable, 
+                            Authorizable, RecurringCapable { }
+class Cash implements PaymentProcessor { } // ✨ Clean!
+```
+
+---
+
+### Q3: "Give a real production example of ISP violation causing problems"
+
+**Perfect Answer:**
+```
+REAL INCIDENT - E-Commerce Platform:
+
+CONTEXT:
+We had a fat User interface with 25+ methods covering:
+- Customers (order history, cart, wishlist)
+- Vendors (product catalog, sales)
+- Admins (permissions, moderation)
+- Guests (session management)
+
+THE REQUEST:
+"Add Instagram-style user following feature"
+
+DEVELOPER'S MISTAKE:
+Added to fat User interface:
+interface User {
+    // ... existing 25 methods
+    List<User> getFollowers();  // NEW
+    List<User> getFollowing();  // NEW
+    void followUser(String userId);  // NEW
+    void unfollowUser(String userId);  // NEW
+}
+
+ALL implementing classes needed changes:
+- GuestUser (guests can't follow!)
+- AdminUser (admins don't follow!)
+- VendorAccount (vendors don't need this!)
+
+WHAT HAPPENED:
+Developer implemented:
+
+class AdminUser implements User {
+    List<User> getFollowers() {
+        return Collections.emptyList(); // Empty list
+    }
+    
+    void followUser(String userId) {
+        // Did nothing - no exception thrown!
+    }
+}
+
+DEPLOYED TO PRODUCTION:
+
+BUG DISCOVERED:
+Admin accidentally clicked "Follow" button (shown due to UI bug).
+No error occurred (method silently did nothing).
+UI showed "Following" but didn't work.
+Admins reported "Following feature broken!"
+
+IMPACT:
+💥 5 days debugging (hard to find silent failures)
+💥 Had to add instanceof checks everywhere
+💥 User trust decreased
+💥 Team spent 40 hours fixing
+
+THE FIX (ISP):
+interface User { ... basic methods ... }
+interface SocialUser extends User {
+    List<User> getFollowers();
+    void followUser(String userId);
+}
+
+class Customer implements SocialUser { ... } ✅
+class Vendor implements SocialUser { ... } ✅
+class AdminUser implements User { ... } ✅ No social methods!
+class GuestUser implements User { ... } ✅ No social methods!
+
+RESULT:
+✅ Compile-time safety (admins CAN'T follow)
+✅ UI correctly hides follow button for admins
+✅ Zero silent failures
+✅ Clear separation of concerns
+
+LESSON:
+ISP violations create SILENT BUGS that are hard to detect!
+```
+
+---
+
+### Q4: "How is ISP different from SRP?"
+
+**Perfect Answer:**
+```
+Great question! They're related but different:
+
+SRP (Single Responsibility Principle):
+- About CLASSES having one reason to change
+- Focuses on IMPLEMENTATION
+- "A class should do ONE thing"
+
+ISP (Interface Segregation Principle):
+- About INTERFACES not forcing unused methods
+- Focuses on CONTRACT/API
+- "Clients shouldn't depend on what they don't use"
+
+THEY WORK TOGETHER:
+
+Example 1 - Violates BOTH:
+
+class ProductManager {  // Violates SRP
+    void addProduct() { }
+    void calculateShipping() { }
+    void sendEmail() { }
+    void updateInventory() { }
+    void generateReport() { }
+}
+
+interface Product {  // Violates ISP
+    void ship();
+    void download();
+    void stream();
+    // Digital products forced to implement ship()!
+}
+
+Example 2 - Follows BOTH:
+
+// ISP - Segregated interfaces
+interface Shippable { void ship(); }
+interface Downloadable { void download(); }
+interface Streamable { void stream(); }
+
+// SRP - Single responsibility classes
+class ShippingService { ... }  // Only shipping
+class DownloadService { ... }  // Only downloads
+class ReportService { ... }    // Only reports
+
+REAL ANALOGY:
+
+SRP = Swiss Army Knife vs Individual Tools
+❌ One class doing everything (Swiss Army Knife)
+✅ Separate classes for separate jobs (Individual Tools)
+
+ISP = Restaurant Menu
+❌ One huge menu forcing vegetarians to see meat options
+✅ Separate menus (Veg, Non-Veg, Drinks) - pick what you need
+
+From my project:
+
+SRP Issue:
+OrderService doing: validation, payment, shipping, email
+Solution: Separate services for each
+
+ISP Issue:
+Product interface with physical + digital + service methods
+Solution: Separate interfaces (PhysicalProduct, Downloadable, etc.)
+
+BOTH together = Clean, maintainable code!
+```
+
+---
+
+### Q5: "Doesn't ISP lead to too many interfaces?"
+
+**Perfect Answer:**
+```
+Yes, if done wrong! It's about BALANCE.
+
+❌ OVER-ENGINEERING (Too many interfaces):
+
+interface Nameable { String getName(); }
+interface Priceable { double getPrice(); }
+interface Identifiable { String getId(); }
+interface Describable { String getDescription(); }
+
+class Product implements Nameable, Priceable, 
+                        Identifiable, Describable {
+    // 4 interfaces for basic properties - OVERKILL!
+}
+
+✅ BALANCED APPROACH:
+
+interface Product {
+    String getId();
+    String getName();
+    double getPrice();
+    String getDescription();
+}
+
+// Segregate only for VARYING CAPABILITIES
+interface Shippable { ... }
+interface Downloadable { ... }
+interface Customizable { ... }
+
+RULES OF THUMB:
+
+1️⃣ GROUP COHESIVE METHODS
+✅ interface Shippable {
+       double getWeight();
+       Dimensions getDimensions();
+       String getShippingClass();
+   }
+   // All related to shipping - GOOD
+
+❌ interface Weightable { double getWeight(); }
+   interface Dimensional { Dimensions getDimensions(); }
+   // Too granular - BAD
+
+2️⃣ SPLIT WHEN IMPLEMENTATIONS VARY
+✅ Split if:
+   - Some products are downloadable, some aren't
+   - Some users are sellers, some aren't
+   - Some payments refundable, some aren't
+
+❌ Don't split if:
+   - ALL products have name, price, ID
+   - ALL users have email, name
+   - ALL orders have date, total
+
+3️⃣ ASK: "WILL CLIENTS USE ALL METHODS?"
+✅ Split if client uses only subset
+❌ Keep together if client needs all methods
+
+Real Example from my project:
+
+BEFORE (Too many interfaces - 15 interfaces):
+interface HasId { String getId(); }
+interface HasName { String getName(); }
+interface HasPrice { double getPrice(); }
+// Too granular!
+
+AFTER (Balanced - 5 interfaces):
+interface Product { ... core properties ... }
+interface PhysicalProduct extends Product { ... }
+interface Downloadable extends Product { ... }
+interface Subscribable extends Product { ... }
+// Perfect balance!
+
+GUIDELINE:
+- 3-7 methods per interface = GOOD
+- 1-2 methods = Probably too granular
+- 15+ methods = Probably too fat
+
+FINAL TEST:
+"Can I describe this interface in one sentence?"
+✅ "Products that can be shipped" → Good
+✅ "Products that can be downloaded" → Good
+❌ "Things that have names" → Too granular
+```
+
+---
+
+### Q6: "How does ISP relate to other SOLID principles?"
+
+**Perfect Answer:**
+```
+ISP works synergistically with all SOLID principles:
+
+ISP + SRP:
+- SRP: Class has one responsibility
+- ISP: Interface exposes one capability
+- Together: Focused, cohesive design
+
+Example:
+interface OrderPlacer { Order placeOrder(); }  // ISP
+class OrderService implements OrderPlacer { }  // SRP
+// One interface, one implementation, one job
+
+ISP + OCP:
+- OCP: Open for extension, closed for modification
+- ISP: Small interfaces easier to extend
+
+Example:
+interface PaymentProcessor { void process(); }  // ISP
+interface Refundable { void refund(); }         // ISP
+
+// Easy to add new payment with refund capability (OCP)
+class NewPayment implements PaymentProcessor, Refundable { }
+
+ISP + LSP:
+- LSP: Subtypes must be substitutable
+- ISP: Prevents forced implementations that break LSP
+
+Example WITHOUT ISP (Breaks LSP):
+interface Product { void ship(); }
+class DigitalProduct implements Product {
+    void ship() { throw new Exception(); } // 🔥 Breaks LSP!
+}
+
+Example WITH ISP (Preserves LSP):
+interface Product { }
+interface Shippable { void ship(); }
+
+class PhysicalProduct implements Product, Shippable { ... } ✅
+class DigitalProduct implements Product { ... } ✅
+// Both are valid Product subtypes (LSP) thanks to ISP!
+
+ISP + DIP:
+- DIP: Depend on abstractions
+- ISP: Depend on right-sized abstractions
+
+Example:
+class OrderService {
+    private PaymentProcessor processor;  // DIP
+    
+    // Thanks to ISP, PaymentProcessor is focused
+    // Not forced to depend on unused refund/recurring methods
+}
+
+REAL EXAMPLE FROM MY PROJECT:
+
+Problem: Fat interface breaking multiple principles
+
+interface Worker {  // Violates ISP
+    void work();
+    void eat();
+    void getSalary();
+}
+
+class Robot implements Worker {
+    void eat() { throw ... }      // Violates LSP
+    void getSalary() { throw ... } // Violates LSP
+}
+
+class WorkerService {
+    void feedWorker(Worker w) {
+        w.eat(); // Might throw! Violates LSP
+    }
+}
+
+Solution: ISP enables all principles
+
+interface Workable { void work(); }
+interface Eatable { void eat(); }
+interface Payable { void getSalary(); }
+
+class Human implements Workable, Eatable, Payable { } // LSP ✅
+class Robot implements Workable { }                   // LSP ✅
+
+class FeedingService {
+    void feed(Eatable e) { e.eat(); }  // DIP + LSP ✅
+}
+
+class WorkManager {
+    void assign(Workable w) { w.work(); }  // SRP + DIP ✅
+}
+
+// Can add new worker types easily (OCP) ✅
+
+ALL SOLID PRINCIPLES WORK TOGETHER:
+S - Focused classes
+O - Easy to extend
+L - Proper substitution
+I - Right-sized interfaces ← Enables the others!
+D - Depend on abstractions
+```
+
+---
+
+## 🎯 Quick Reference Card
+
+```java
+/**
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *  INTERFACE SEGREGATION PRINCIPLE (ISP)
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 
+ * 🎯 DEFINITION:
+ * "Clients should not be forced to depend on 
+ *  interfaces they don't use"
+ * 
+ * 🔍 IDENTIFY VIOLATIONS:
+ * ❌ throw new UnsupportedOperationException()
+ * ❌ Empty method implementations
+ * ❌ Returning null/default values
+ * ❌ Methods that don't apply to class
+ * ❌ Many instanceof checks
+ * ❌ Comments saying "not applicable"
+ * 
+ * ✅ SOLUTIONS:
+ * ✓ Split large interfaces into smaller ones
+ * ✓ Group cohesive methods together
+ * ✓ Create role-based interfaces
+ * ✓ Use interface composition
+ * ✓ Apply only what's needed
+ * 
+ * 🔧 REFACTORING PATTERN:
+ * 
+ * BEFORE (Fat Interface):
+ * interface Product {
+ *     // 30 methods covering all product types
+ * }
+ * 
+ * AFTER (Segregated):
+ * interface Product { }              // Base
+ * interface PhysicalProduct { }      // Role
+ * interface Downloadable { }         // Role
+ * interface Customizable { }         // Role
+ * 
+ * class Book implements Product, PhysicalProduct { }
+ * class EBook implements Product, Downloadable { }
+ * 
+ * 🎁 BENEFITS:
+ * ✓ No forced implementations
+ * ✓ No UnsupportedOperationException
+ * ✓ Clear responsibilities
+ * ✓ Easier to understand
+ * ✓ Better testability
+ * ✓ Maintains LSP
+ * ✓ Flexible composition
+ * 
+ * ⚠️ BALANCE:
+ * ✓ 3-7 methods per interface = Good
+ * ⚠️ 1-2 methods = Might be too granular
+ * ❌ 15+ methods = Probably too fat
+ * 
+ * 💡 THE TESTS:
+ * 1. "Does this class use ALL interface methods?"
+ *    NO → ISP violated
+ * 
+ * 2. "Do I have empty/throwing implementations?"
+ *    YES → ISP violated
+ * 
+ * 3. "Can I describe interface in one sentence?"
+ *    NO → Probably too complex
+ * 
+ * 📝 REMEMBER:
+ * "Many small interfaces > One fat interface"
+ * "Implement only what you need"
+ * 
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ */
+```
+
+---
+
+## 🌟 Final Pro Tips
+
+### 1️⃣ Start with Violations
+```java
+// Look for this smell in your code:
+throw new UnsupportedOperationException();
+// Every time you see this = ISP violation!
+```
+
+### 2️⃣ Use Composition Over Inheritance
+```java
+// Instead of huge inheritance hierarchy
+// Use interface composition
+class CustomTShirt implements Physical, Stockable, Customizable { }
+```
+
+### 3️⃣ Think "Roles" Not "Types"
+```java
+// ✅ Role-based
+interface Purchasable { }
+interface Rentable { }
+interface Downloadable { }
+
+// ❌ Type-based (too specific)
+interface Book { }
+interface Movie { }
+interface Song { }
+```
+
+### 4️⃣ Group Related Methods
+```java
+// ✅ Cohesive
+interface Shippable {
+    double getWeight();
+    Dimensions getDimensions();
+    String getShippingClass();
+}
+
+// ❌ Not cohesive
+interface Product {
+    double getWeight();
+    String getDownloadUrl();
+    boolean isRecurring();
+}
+```
+
+### 5️⃣ Document Interface Purpose
+```java
+/**
+ * Products that can be physically shipped.
+ * Implement this for products with weight and dimensions.
+ */
+public interface Shippable { }
+```
+
+
+---
+
+**Remember:** 🌟
+
+> "Force no one to implement what they don't need.
+> Design interfaces like a buffet, not a set menu.
+> Take only what you'll actually use!"
+
+---
+
+*Made with ❤️ for Clean Interfaces*
+*Zero Forced Methods Rate: 💯%*
+
+🚀 **Happy Segregating!**
