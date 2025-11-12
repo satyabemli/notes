@@ -1802,6 +1802,2505 @@ it probably violates SRP!
 
 🚀 **Happy Coding!**
 
+# 🔓 Open/Closed Principle - Real-Time Deep Dive
+---
+
+## 🎯 OCP Core Concept
+
+### Definition
+> **"Software entities should be OPEN for extension but CLOSED for modification"**
+
+### What It Really Means 💭
+
+```java
+/**
+ * 🔓 OPEN for Extension:
+ * - You can ADD new functionality
+ * - You can create new classes/implementations
+ * - System can grow and evolve
+ * 
+ * 🔒 CLOSED for Modification:
+ * - DON'T change existing, tested code
+ * - Existing classes remain untouched
+ * - Reduces risk of breaking working features
+ * 
+ * HOW TO ACHIEVE:
+ * ✅ Use Abstractions (Interfaces/Abstract Classes)
+ * ✅ Use Polymorphism
+ * ✅ Use Design Patterns (Strategy, Factory, etc.)
+ * ✅ Dependency Injection
+ * 
+ * ❌ AVOID:
+ * ✗ Long if-else or switch statements
+ * ✗ Modifying existing classes for new features
+ * ✗ Hard-coded logic
+ */
+```
+
+### The "New Feature Test" 🧪
+
+**Ask yourself:** *"Can I add a new feature without modifying existing code?"*
+
+- If **YES** → ✅ **OCP Followed**
+- If **NO** (need to modify existing classes) → ❌ **OCP Violated**
+
+---
+
+## 💰 Scenario 1: Discount & Promotion System
+
+### ❌ BAD Example - Violating OCP
+
+```java
+/**
+ * 🚫 VIOLATION: Need to modify this class for every new discount type!
+ * This is a classic OCP violation - the switch/if-else anti-pattern
+ */
+
+@Service
+public class DiscountCalculator {
+    
+    /**
+     * 🔥 PROBLEM: Adding new discount types requires MODIFYING this method
+     * - What if we want to add:
+     *   • Buy 2 Get 1 Free?
+     *   • Student discount?
+     *   • Military discount?
+     *   • Flash sale discount?
+     *   • Bundle discount?
+     *   • Referral discount?
+     * 
+     * Each new type = MODIFY this class = RISK breaking existing discounts!
+     */
+    public double calculateDiscount(Order order, String discountType, String code) {
+        
+        double discount = 0;
+        
+        // 🔥 Long if-else chain that grows forever
+        if (discountType.equals("PERCENTAGE")) {
+            // Percentage discount logic
+            if (code.equals("SAVE10")) {
+                discount = order.getSubtotal() * 0.10;
+            } else if (code.equals("SAVE20")) {
+                discount = order.getSubtotal() * 0.20;
+            } else if (code.equals("VIP30")) {
+                discount = order.getSubtotal() * 0.30;
+            }
+            
+        } else if (discountType.equals("FIXED_AMOUNT")) {
+            // Fixed amount discount logic
+            if (code.equals("FLAT5")) {
+                discount = 5.0;
+            } else if (code.equals("FLAT10")) {
+                discount = 10.0;
+            } else if (code.equals("FLAT25")) {
+                discount = 25.0;
+            }
+            
+        } else if (discountType.equals("FIRST_TIME_USER")) {
+            // First time user discount
+            if (order.isFirstOrder()) {
+                discount = order.getSubtotal() * 0.15;
+            }
+            
+        } else if (discountType.equals("SEASONAL")) {
+            // Seasonal discount logic
+            LocalDate now = LocalDate.now();
+            int month = now.getMonthValue();
+            
+            if (month == 11 || month == 12) { // Holiday season
+                discount = order.getSubtotal() * 0.25;
+            } else if (month == 7) { // Summer sale
+                discount = order.getSubtotal() * 0.15;
+            }
+            
+        } else if (discountType.equals("LOYALTY_POINTS")) {
+            // Loyalty points discount
+            int points = order.getCustomer().getLoyaltyPoints();
+            if (points > 1000) {
+                discount = 50.0;
+            } else if (points > 500) {
+                discount = 25.0;
+            } else if (points > 100) {
+                discount = 10.0;
+            }
+            
+        } else if (discountType.equals("BULK_PURCHASE")) {
+            // Bulk purchase discount
+            int totalItems = order.getItems().stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
+            
+            if (totalItems >= 10) {
+                discount = order.getSubtotal() * 0.20;
+            } else if (totalItems >= 5) {
+                discount = order.getSubtotal() * 0.10;
+            }
+            
+        } else if (discountType.equals("CATEGORY_SPECIFIC")) {
+            // Category specific discount
+            double categoryTotal = order.getItems().stream()
+                .filter(item -> item.getCategory().equals("ELECTRONICS"))
+                .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                .sum();
+            
+            discount = categoryTotal * 0.15;
+            
+        } else if (discountType.equals("MINIMUM_PURCHASE")) {
+            // Minimum purchase discount
+            if (order.getSubtotal() >= 100) {
+                discount = 15.0;
+            } else if (order.getSubtotal() >= 50) {
+                discount = 5.0;
+            }
+            
+        } else if (discountType.equals("COMBO_DEAL")) {
+            // Combo deal logic
+            boolean hasLaptop = order.getItems().stream()
+                .anyMatch(item -> item.getCategory().equals("LAPTOP"));
+            boolean hasMouse = order.getItems().stream()
+                .anyMatch(item -> item.getCategory().equals("MOUSE"));
+            
+            if (hasLaptop && hasMouse) {
+                discount = 30.0;
+            }
+            
+        } else if (discountType.equals("CLEARANCE")) {
+            // Clearance discount
+            discount = order.getItems().stream()
+                .filter(OrderItem::isClearanceItem)
+                .mapToDouble(item -> item.getPrice() * item.getQuantity() * 0.50)
+                .sum();
+        }
+        // 🔥 MORE ELSE-IFS WILL BE ADDED HERE...
+        // 🔥 THIS METHOD GROWS TO 500+ LINES!
+        
+        return Math.min(discount, order.getSubtotal()); // Can't discount more than order
+    }
+}
+
+/**
+ * 🔥 CLIENT CODE - Also needs modification for new discount types
+ */
+@RestController
+@RequestMapping("/api/discounts")
+public class DiscountController {
+    
+    @Autowired
+    private DiscountCalculator discountCalculator;
+    
+    @PostMapping("/apply")
+    public ResponseEntity<DiscountResponse> applyDiscount(@RequestBody DiscountRequest request) {
+        
+        // 🔥 Client needs to know all discount types
+        String discountType = request.getDiscountType();
+        
+        // 🔥 Validation for each type
+        if (!isValidDiscountType(discountType)) {
+            return ResponseEntity.badRequest()
+                .body(new DiscountResponse("Invalid discount type"));
+        }
+        
+        double discount = discountCalculator.calculateDiscount(
+            request.getOrder(), 
+            discountType, 
+            request.getCode()
+        );
+        
+        return ResponseEntity.ok(new DiscountResponse(discount));
+    }
+    
+    // 🔥 Need to update this for every new discount type
+    private boolean isValidDiscountType(String type) {
+        return type.equals("PERCENTAGE") ||
+               type.equals("FIXED_AMOUNT") ||
+               type.equals("FIRST_TIME_USER") ||
+               type.equals("SEASONAL") ||
+               type.equals("LOYALTY_POINTS") ||
+               type.equals("BULK_PURCHASE") ||
+               type.equals("CATEGORY_SPECIFIC") ||
+               type.equals("MINIMUM_PURCHASE") ||
+               type.equals("COMBO_DEAL") ||
+               type.equals("CLEARANCE");
+        // 🔥 GROWS WITH EVERY NEW DISCOUNT TYPE!
+    }
+}
+```
+
+### 🔥 Problems with Above Code
+
+| Problem | Impact | Why It's Bad |
+|---------|--------|--------------|
+| **Modify for every new discount** | High risk | 💥 Might break existing discounts |
+| **500+ line method** | Unmaintainable | 😱 Impossible to understand |
+| **No separation of concerns** | Tight coupling | 🔗 Everything in one place |
+| **Hard to test** | Low coverage | 🧪 Need to test all paths together |
+| **Merge conflicts** | Team friction | 👥 Everyone modifying same file |
+| **Can't add discounts at runtime** | Inflexible | 🚫 Need code deployment |
+| **Duplicate logic** | Code smell | 📝 Similar code repeated |
+
+### Real Production Horror Story 😱
+
+```java
+/**
+ * ACTUAL INCIDENT FROM PRODUCTION:
+ * 
+ * Timeline:
+ * - 2 PM: Marketing requests "Black Friday 40% off" discount
+ * - 2:30 PM: Developer adds new else-if to calculateDiscount()
+ * - 3 PM: QA tests Black Friday discount ✅ Works!
+ * - 3:30 PM: Deployed to production
+ * - 4 PM: 💥 ALL PERCENTAGE DISCOUNTS STOP WORKING!
+ * 
+ * What happened?
+ * Developer accidentally changed this line:
+ * 
+ * BEFORE:
+ * if (code.equals("SAVE10")) {
+ *     discount = order.getSubtotal() * 0.10;
+ * }
+ * 
+ * AFTER (typo):
+ * if (code.equals("SAVE10")) {
+ *     discount = order.getSubtotal() * 0.01;  // ← TYPO! 10% became 1%
+ * }
+ * 
+ * Impact:
+ * - Lost $100,000 in sales (customers saw wrong discounts)
+ * - 2,000 customer complaints
+ * - Emergency rollback
+ * - Team worked till midnight fixing
+ * 
+ * Root Cause: VIOLATED OPEN/CLOSED PRINCIPLE
+ * - Adding new feature (Black Friday) required modifying existing code
+ * - No protection against breaking existing features
+ * - All discounts in one giant method
+ */
+```
+
+---
+
+### ✅ GOOD Example - Following OCP
+
+```java
+/**
+ * ✨ SOLUTION: Use Strategy Pattern + OCP
+ * Adding new discount types = Create new class (EXTEND)
+ * NO modification to existing code (CLOSED)
+ */
+
+// ========================================
+// 1️⃣ ABSTRACTION - The contract all discounts follow
+// ========================================
+
+/**
+ * ✨ This interface is CLOSED for modification
+ * But system is OPEN for extension via new implementations
+ */
+public interface DiscountStrategy {
+    
+    /**
+     * Calculate discount amount for an order
+     * @param order The order to calculate discount for
+     * @return The discount amount
+     */
+    double calculateDiscount(Order order);
+    
+    /**
+     * Check if this discount is applicable
+     * @param order The order to check
+     * @return true if discount can be applied
+     */
+    boolean isApplicable(Order order);
+    
+    /**
+     * Get discount description
+     * @return Human-readable description
+     */
+    String getDescription();
+    
+    /**
+     * Get discount type identifier
+     * @return Unique identifier for this discount
+     */
+    String getType();
+}
+
+// ========================================
+// 2️⃣ CONCRETE IMPLEMENTATIONS - Each discount type
+// ========================================
+
+/**
+ * ✨ Percentage Discount - CLOSED (never needs modification)
+ */
+@Component
+public class PercentageDiscountStrategy implements DiscountStrategy {
+    
+    private final double percentage;
+    private final String code;
+    
+    public PercentageDiscountStrategy(String code, double percentage) {
+        this.code = code;
+        this.percentage = percentage;
+    }
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        return order.getSubtotal() * (percentage / 100);
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return code.equalsIgnoreCase(order.getDiscountCode());
+    }
+    
+    @Override
+    public String getDescription() {
+        return String.format("%.0f%% off your order", percentage);
+    }
+    
+    @Override
+    public String getType() {
+        return "PERCENTAGE_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ Fixed Amount Discount - CLOSED
+ */
+@Component
+public class FixedAmountDiscountStrategy implements DiscountStrategy {
+    
+    private final double amount;
+    private final String code;
+    
+    public FixedAmountDiscountStrategy(String code, double amount) {
+        this.code = code;
+        this.amount = amount;
+    }
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        return Math.min(amount, order.getSubtotal());
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return code.equalsIgnoreCase(order.getDiscountCode());
+    }
+    
+    @Override
+    public String getDescription() {
+        return String.format("$%.2f off your order", amount);
+    }
+    
+    @Override
+    public String getType() {
+        return "FIXED_AMOUNT_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ First Time User Discount - CLOSED
+ */
+@Component
+public class FirstTimeUserDiscountStrategy implements DiscountStrategy {
+    
+    private final double percentage = 15.0;
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        if (order.getCustomer().isFirstTimeCustomer()) {
+            return order.getSubtotal() * (percentage / 100);
+        }
+        return 0;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return order.getCustomer().isFirstTimeCustomer();
+    }
+    
+    @Override
+    public String getDescription() {
+        return "First-time customer discount: 15% off";
+    }
+    
+    @Override
+    public String getType() {
+        return "FIRST_TIME_USER_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ Seasonal Discount - CLOSED
+ */
+@Component
+public class SeasonalDiscountStrategy implements DiscountStrategy {
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        int month = LocalDate.now().getMonthValue();
+        
+        // Holiday season (Nov-Dec): 25% off
+        if (month == 11 || month == 12) {
+            return order.getSubtotal() * 0.25;
+        }
+        
+        // Summer sale (July): 15% off
+        if (month == 7) {
+            return order.getSubtotal() * 0.15;
+        }
+        
+        return 0;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        int month = LocalDate.now().getMonthValue();
+        return month == 11 || month == 12 || month == 7;
+    }
+    
+    @Override
+    public String getDescription() {
+        int month = LocalDate.now().getMonthValue();
+        if (month == 11 || month == 12) {
+            return "Holiday Season Sale: 25% off";
+        } else if (month == 7) {
+            return "Summer Sale: 15% off";
+        }
+        return "Seasonal discount";
+    }
+    
+    @Override
+    public String getType() {
+        return "SEASONAL_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ Loyalty Points Discount - CLOSED
+ */
+@Component
+public class LoyaltyPointsDiscountStrategy implements DiscountStrategy {
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        int points = order.getCustomer().getLoyaltyPoints();
+        
+        if (points >= 1000) {
+            return 50.0;
+        } else if (points >= 500) {
+            return 25.0;
+        } else if (points >= 100) {
+            return 10.0;
+        }
+        
+        return 0;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return order.getCustomer().getLoyaltyPoints() >= 100;
+    }
+    
+    @Override
+    public String getDescription() {
+        return "Loyalty rewards discount";
+    }
+    
+    @Override
+    public String getType() {
+        return "LOYALTY_POINTS_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ Bulk Purchase Discount - CLOSED
+ */
+@Component
+public class BulkPurchaseDiscountStrategy implements DiscountStrategy {
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        int totalItems = order.getItems().stream()
+            .mapToInt(OrderItem::getQuantity)
+            .sum();
+        
+        if (totalItems >= 10) {
+            return order.getSubtotal() * 0.20; // 20% off
+        } else if (totalItems >= 5) {
+            return order.getSubtotal() * 0.10; // 10% off
+        }
+        
+        return 0;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        int totalItems = order.getItems().stream()
+            .mapToInt(OrderItem::getQuantity)
+            .sum();
+        return totalItems >= 5;
+    }
+    
+    @Override
+    public String getDescription() {
+        return "Bulk purchase discount: Buy more, save more!";
+    }
+    
+    @Override
+    public String getType() {
+        return "BULK_PURCHASE_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ Category-Specific Discount - CLOSED
+ */
+@Component
+public class CategoryDiscountStrategy implements DiscountStrategy {
+    
+    private final String category;
+    private final double percentage;
+    
+    public CategoryDiscountStrategy(String category, double percentage) {
+        this.category = category;
+        this.percentage = percentage;
+    }
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        double categoryTotal = order.getItems().stream()
+            .filter(item -> category.equalsIgnoreCase(item.getCategory()))
+            .mapToDouble(item -> item.getPrice() * item.getQuantity())
+            .sum();
+        
+        return categoryTotal * (percentage / 100);
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return order.getItems().stream()
+            .anyMatch(item -> category.equalsIgnoreCase(item.getCategory()));
+    }
+    
+    @Override
+    public String getDescription() {
+        return String.format("%.0f%% off on %s items", percentage, category);
+    }
+    
+    @Override
+    public String getType() {
+        return "CATEGORY_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ Minimum Purchase Discount - CLOSED
+ */
+@Component
+public class MinimumPurchaseDiscountStrategy implements DiscountStrategy {
+    
+    private final double minimumAmount;
+    private final double discountAmount;
+    
+    public MinimumPurchaseDiscountStrategy(double minimumAmount, double discountAmount) {
+        this.minimumAmount = minimumAmount;
+        this.discountAmount = discountAmount;
+    }
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        if (order.getSubtotal() >= minimumAmount) {
+            return discountAmount;
+        }
+        return 0;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return order.getSubtotal() >= minimumAmount;
+    }
+    
+    @Override
+    public String getDescription() {
+        return String.format("Spend $%.2f, get $%.2f off", minimumAmount, discountAmount);
+    }
+    
+    @Override
+    public String getType() {
+        return "MINIMUM_PURCHASE_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ Buy X Get Y Free Discount - CLOSED
+ */
+@Component
+public class BuyXGetYDiscountStrategy implements DiscountStrategy {
+    
+    private final int buyQuantity;
+    private final int freeQuantity;
+    
+    public BuyXGetYDiscountStrategy(int buyQuantity, int freeQuantity) {
+        this.buyQuantity = buyQuantity;
+        this.freeQuantity = freeQuantity;
+    }
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        double totalDiscount = 0;
+        
+        for (OrderItem item : order.getItems()) {
+            int quantity = item.getQuantity();
+            int sets = quantity / (buyQuantity + freeQuantity);
+            int freeItems = sets * freeQuantity;
+            
+            totalDiscount += freeItems * item.getPrice();
+        }
+        
+        return totalDiscount;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return order.getItems().stream()
+            .anyMatch(item -> item.getQuantity() >= (buyQuantity + freeQuantity));
+    }
+    
+    @Override
+    public String getDescription() {
+        return String.format("Buy %d Get %d Free!", buyQuantity, freeQuantity);
+    }
+    
+    @Override
+    public String getType() {
+        return "BUY_X_GET_Y_DISCOUNT";
+    }
+}
+
+// ========================================
+// 3️⃣ WANT TO ADD NEW DISCOUNT TYPE? JUST CREATE NEW CLASS!
+// ========================================
+
+/**
+ * ✨ NEW: Student Discount - Added without modifying existing code!
+ * This class was added 6 months after initial release
+ * NO existing code was touched!
+ */
+@Component
+public class StudentDiscountStrategy implements DiscountStrategy {
+    
+    private final double percentage = 20.0;
+    
+    @Autowired
+    private StudentVerificationService verificationService;
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        if (verificationService.isVerifiedStudent(order.getCustomer())) {
+            return order.getSubtotal() * (percentage / 100);
+        }
+        return 0;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return verificationService.isVerifiedStudent(order.getCustomer());
+    }
+    
+    @Override
+    public String getDescription() {
+        return "Student discount: 20% off with valid student ID";
+    }
+    
+    @Override
+    public String getType() {
+        return "STUDENT_DISCOUNT";
+    }
+}
+
+/**
+ * ✨ NEW: Referral Discount - Also added later without touching existing code!
+ */
+@Component
+public class ReferralDiscountStrategy implements DiscountStrategy {
+    
+    private final double referrerBonus = 10.0;
+    private final double referredBonus = 15.0;
+    
+    @Override
+    public double calculateDiscount(Order order) {
+        String referralCode = order.getReferralCode();
+        
+        if (referralCode != null && !referralCode.isEmpty()) {
+            // New customer gets bigger discount
+            if (order.getCustomer().isFirstTimeCustomer()) {
+                return referredBonus;
+            }
+            // Referring customer gets smaller discount
+            return referrerBonus;
+        }
+        
+        return 0;
+    }
+    
+    @Override
+    public boolean isApplicable(Order order) {
+        return order.getReferralCode() != null && !order.getReferralCode().isEmpty();
+    }
+    
+    @Override
+    public String getDescription() {
+        return "Referral discount: Refer a friend and both save!";
+    }
+    
+    @Override
+    public String getType() {
+        return "REFERRAL_DISCOUNT";
+    }
+}
+
+// ========================================
+// 4️⃣ DISCOUNT SERVICE - Manages all discounts
+// ========================================
+
+/**
+ * ✨ This service is CLOSED for modification
+ * New discount types automatically picked up via dependency injection!
+ */
+@Service
+public class DiscountService {
+    
+    private final List<DiscountStrategy> allStrategies;
+    
+    /**
+     * ✨ Spring auto-injects ALL implementations of DiscountStrategy
+     * When new discount class is created, it's automatically available!
+     */
+    @Autowired
+    public DiscountService(List<DiscountStrategy> allStrategies) {
+        this.allStrategies = allStrategies;
+    }
+    
+    /**
+     * Calculate best discount for an order
+     * NO modification needed when new discount types are added!
+     */
+    public DiscountResult calculateBestDiscount(Order order) {
+        
+        double maxDiscount = 0;
+        DiscountStrategy bestStrategy = null;
+        
+        // Check all available discounts
+        for (DiscountStrategy strategy : allStrategies) {
+            if (strategy.isApplicable(order)) {
+                double discount = strategy.calculateDiscount(order);
+                
+                if (discount > maxDiscount) {
+                    maxDiscount = discount;
+                    bestStrategy = strategy;
+                }
+            }
+        }
+        
+        if (bestStrategy != null) {
+            return DiscountResult.success(
+                maxDiscount, 
+                bestStrategy.getDescription(),
+                bestStrategy.getType()
+            );
+        }
+        
+        return DiscountResult.noDiscount();
+    }
+    
+    /**
+     * Get all applicable discounts for an order
+     */
+    public List<DiscountResult> getAllApplicableDiscounts(Order order) {
+        return allStrategies.stream()
+            .filter(strategy -> strategy.isApplicable(order))
+            .map(strategy -> DiscountResult.success(
+                strategy.calculateDiscount(order),
+                strategy.getDescription(),
+                strategy.getType()
+            ))
+            .sorted(Comparator.comparing(DiscountResult::getAmount).reversed())
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Apply specific discount type
+     */
+    public DiscountResult applyDiscount(Order order, String discountType) {
+        return allStrategies.stream()
+            .filter(strategy -> strategy.getType().equals(discountType))
+            .filter(strategy -> strategy.isApplicable(order))
+            .findFirst()
+            .map(strategy -> DiscountResult.success(
+                strategy.calculateDiscount(order),
+                strategy.getDescription(),
+                strategy.getType()
+            ))
+            .orElse(DiscountResult.notApplicable("Discount not applicable"));
+    }
+}
+
+// ========================================
+// 5️⃣ DISCOUNT RESULT - Value object
+// ========================================
+
+@Data
+@Builder
+@AllArgsConstructor
+public class DiscountResult {
+    private boolean applied;
+    private double amount;
+    private String description;
+    private String type;
+    private String message;
+    
+    public static DiscountResult success(double amount, String description, String type) {
+        return DiscountResult.builder()
+            .applied(true)
+            .amount(amount)
+            .description(description)
+            .type(type)
+            .build();
+    }
+    
+    public static DiscountResult noDiscount() {
+        return DiscountResult.builder()
+            .applied(false)
+            .amount(0)
+            .message("No applicable discounts")
+            .build();
+    }
+    
+    public static DiscountResult notApplicable(String message) {
+        return DiscountResult.builder()
+            .applied(false)
+            .amount(0)
+            .message(message)
+            .build();
+    }
+}
+
+// ========================================
+// 6️⃣ CONTROLLER - Also CLOSED for modification
+// ========================================
+
+@RestController
+@RequestMapping("/api/discounts")
+public class DiscountController {
+    
+    @Autowired
+    private DiscountService discountService;
+    
+    /**
+     * ✨ NO modification needed when new discount types are added!
+     */
+    @PostMapping("/calculate")
+    public ResponseEntity<DiscountResponse> calculateDiscount(@RequestBody Order order) {
+        
+        DiscountResult result = discountService.calculateBestDiscount(order);
+        
+        return ResponseEntity.ok(new DiscountResponse(
+            result.isApplied(),
+            result.getAmount(),
+            result.getDescription()
+        ));
+    }
+    
+    /**
+     * Get all available discounts for customer
+     */
+    @PostMapping("/available")
+    public ResponseEntity<List<DiscountResult>> getAvailableDiscounts(@RequestBody Order order) {
+        
+        List<DiscountResult> discounts = discountService.getAllApplicableDiscounts(order);
+        
+        return ResponseEntity.ok(discounts);
+    }
+}
+
+// ========================================
+// 7️⃣ CONFIGURATION - Runtime discount management
+// ========================================
+
+/**
+ * ✨ BONUS: Configure discounts without code changes!
+ */
+@Configuration
+public class DiscountConfiguration {
+    
+    /**
+     * Define discount codes via configuration
+     * Can be moved to database for runtime management!
+     */
+    @Bean
+    public DiscountStrategy save10Discount() {
+        return new PercentageDiscountStrategy("SAVE10", 10.0);
+    }
+    
+    @Bean
+    public DiscountStrategy save20Discount() {
+        return new PercentageDiscountStrategy("SAVE20", 20.0);
+    }
+    
+    @Bean
+    public DiscountStrategy vip30Discount() {
+        return new PercentageDiscountStrategy("VIP30", 30.0);
+    }
+    
+    @Bean
+    public DiscountStrategy flat5Discount() {
+        return new FixedAmountDiscountStrategy("FLAT5", 5.0);
+    }
+    
+    @Bean
+    public DiscountStrategy electronicsDiscount() {
+        return new CategoryDiscountStrategy("ELECTRONICS", 15.0);
+    }
+    
+    @Bean
+    public DiscountStrategy spend100Get15() {
+        return new MinimumPurchaseDiscountStrategy(100.0, 15.0);
+    }
+    
+    @Bean
+    public DiscountStrategy buy2Get1Free() {
+        return new BuyXGetYDiscountStrategy(2, 1);
+    }
+    
+    // ✨ Adding new discount = Just add new @Bean method
+    // NO modification to existing beans!
+}
+```
+
+---
+
+### ✨ Benefits of OCP Design
+
+| Aspect | ❌ Before (Violation) | ✅ After (OCP) |
+|--------|---------------------|---------------|
+| **Adding New Discount** | Modify DiscountCalculator | Create new class |
+| **Risk of Breaking** | High (touch existing code) | Zero (no existing code changed) |
+| **Code Length** | 500+ lines in one method | 20-30 lines per class |
+| **Testing** | Test everything together | Test each discount independently |
+| **Deployment** | Full redeployment | Can add via configuration |
+| **Parallel Development** | Merge conflicts | Independent work |
+| **Runtime Changes** | Impossible | Possible with database config |
+
+### 📊 Real Impact Metrics
+
+```java
+/**
+ * 📈 BEFORE OCP (6 months):
+ * - 12 new discount types added
+ * - DiscountCalculator grew to 847 lines
+ * - 23 bugs introduced
+ * - 8 emergency hotfixes
+ * - Average fix time: 4 hours
+ * - Team morale: 😢
+ * 
+ * 📈 AFTER OCP (6 months):
+ * - 15 new discount types added
+ * - No existing code modified
+ * - 2 bugs (only in new discounts)
+ * - 0 emergency hotfixes
+ * - Average fix time: 15 minutes
+ * - Team morale: 😄
+ * 
+ * 💰 BUSINESS IMPACT:
+ * - 90% reduction in bugs
+ * - 3x faster feature development
+ * - 95% reduction in production incidents
+ * - Marketing can launch promotions same day
+ */
+```
+
+---
+
+## 💳 Scenario 2: Payment Processing System
+
+### ❌ BAD Example
+
+```java
+/**
+ * 🚫 VIOLATION: Adding new payment method requires code changes
+ */
+@Service
+public class PaymentProcessor {
+    
+    public PaymentResult processPayment(PaymentRequest request) {
+        
+        String paymentMethod = request.getPaymentMethod();
+        
+        // 🔥 Need to modify this for every new payment method
+        if ("CREDIT_CARD".equals(paymentMethod)) {
+            return processCreditCard(request);
+            
+        } else if ("DEBIT_CARD".equals(paymentMethod)) {
+            return processDebitCard(request);
+            
+        } else if ("PAYPAL".equals(paymentMethod)) {
+            return processPayPal(request);
+            
+        } else if ("STRIPE".equals(paymentMethod)) {
+            return processStripe(request);
+            
+        } else if ("VENMO".equals(paymentMethod)) {
+            return processVenmo(request);
+            
+        } else if ("APPLE_PAY".equals(paymentMethod)) {
+            return processApplePay(request);
+            
+        } else if ("GOOGLE_PAY".equals(paymentMethod)) {
+            return processGooglePay(request);
+            
+        } else if ("BITCOIN".equals(paymentMethod)) {
+            return processBitcoin(request);
+            
+        } else if ("BANK_TRANSFER".equals(paymentMethod)) {
+            return processBankTransfer(request);
+        }
+        // 🔥 What about UPI, AliPay, WeChat Pay, etc.?
+        
+        throw new UnsupportedPaymentMethodException("Unknown payment method: " + paymentMethod);
+    }
+    
+    // 🔥 Multiple private methods doing similar things
+    private PaymentResult processCreditCard(PaymentRequest request) { /* ... */ }
+    private PaymentResult processDebitCard(PaymentRequest request) { /* ... */ }
+    private PaymentResult processPayPal(PaymentRequest request) { /* ... */ }
+    // ... more methods
+}
+```
+
+### ✅ GOOD Example
+
+```java
+/**
+ * ✨ OCP-COMPLIANT: Payment processing using Strategy Pattern
+ */
+
+// Payment interface
+public interface PaymentProcessor {
+    PaymentResult process(PaymentRequest request);
+    boolean supports(String paymentMethod);
+    String getPaymentMethod();
+}
+
+// Credit Card implementation
+@Service
+public class CreditCardPaymentProcessor implements PaymentProcessor {
+    
+    @Value("${payment.gateway.creditcard.url}")
+    private String gatewayUrl;
+    
+    @Override
+    public PaymentResult process(PaymentRequest request) {
+        // Credit card specific logic
+        return PaymentResult.success("CC-" + UUID.randomUUID());
+    }
+    
+    @Override
+    public boolean supports(String paymentMethod) {
+        return "CREDIT_CARD".equals(paymentMethod);
+    }
+    
+    @Override
+    public String getPaymentMethod() {
+        return "CREDIT_CARD";
+    }
+}
+
+// PayPal implementation
+@Service
+public class PayPalPaymentProcessor implements PaymentProcessor {
+    
+    @Autowired
+    private PayPalClient payPalClient;
+    
+    @Override
+    public PaymentResult process(PaymentRequest request) {
+        // PayPal specific logic
+        String transactionId = payPalClient.charge(
+            request.getAmount(), 
+            request.getPayPalToken()
+        );
+        return PaymentResult.success(transactionId);
+    }
+    
+    @Override
+    public boolean supports(String paymentMethod) {
+        return "PAYPAL".equals(paymentMethod);
+    }
+    
+    @Override
+    public String getPaymentMethod() {
+        return "PAYPAL";
+    }
+}
+
+// ✨ NEW: Cryptocurrency payment (added 1 year later, no existing code touched!)
+@Service
+public class CryptoPaymentProcessor implements PaymentProcessor {
+    
+    @Autowired
+    private BlockchainService blockchainService;
+    
+    @Override
+    public PaymentResult process(PaymentRequest request) {
+        String walletAddress = request.getWalletAddress();
+        String txHash = blockchainService.sendTransaction(
+            walletAddress,
+            request.getAmount()
+        );
+        return PaymentResult.success(txHash);
+    }
+    
+    @Override
+    public boolean supports(String paymentMethod) {
+        return "CRYPTOCURRENCY".equals(paymentMethod);
+    }
+    
+    @Override
+    public String getPaymentMethod() {
+        return "CRYPTOCURRENCY";
+    }
+}
+
+// Payment service - CLOSED for modification
+@Service
+public class PaymentService {
+    
+    private final Map<String, PaymentProcessor> processors;
+    
+    @Autowired
+    public PaymentService(List<PaymentProcessor> processorList) {
+        // Auto-discover all payment processors
+        this.processors = processorList.stream()
+            .collect(Collectors.toMap(
+                PaymentProcessor::getPaymentMethod,
+                Function.identity()
+            ));
+    }
+    
+    public PaymentResult processPayment(PaymentRequest request) {
+        PaymentProcessor processor = processors.get(request.getPaymentMethod());
+        
+        if (processor == null) {
+            return PaymentResult.failure("Unsupported payment method");
+        }
+        
+        return processor.process(request);
+    }
+    
+    public List<String> getSupportedPaymentMethods() {
+        return new ArrayList<>(processors.keySet());
+    }
+}
+```
+
+---
+
+## 🚚 Scenario 3: Shipping Calculation
+
+### ✅ GOOD Example - Extensible Shipping
+
+```java
+/**
+ * ✨ OCP-COMPLIANT: Shipping calculation system
+ */
+
+public interface ShippingCalculator {
+    double calculateCost(ShippingRequest request);
+    int getEstimatedDays(ShippingRequest request);
+    boolean supports(String shippingMethod);
+    String getShippingMethod();
+}
+
+@Service
+public class StandardShippingCalculator implements ShippingCalculator {
+    
+    private static final double BASE_RATE = 5.99;
+    private static final double PER_KG_RATE = 2.50;
+    
+    @Override
+    public double calculateCost(ShippingRequest request) {
+        double weight = request.getTotalWeight();
+        double distance = calculateDistance(request.getOrigin(), request.getDestination());
+        
+        double cost = BASE_RATE + (weight * PER_KG_RATE);
+        
+        // Free shipping for orders over $100
+        if (request.getOrderTotal() >= 100) {
+            return 0;
+        }
+        
+        return cost;
+    }
+    
+    @Override
+    public int getEstimatedDays(ShippingRequest request) {
+        return 5; // 5 business days
+    }
+    
+    @Override
+    public boolean supports(String shippingMethod) {
+        return "STANDARD".equals(shippingMethod);
+    }
+    
+    @Override
+    public String getShippingMethod() {
+        return "STANDARD";
+    }
+    
+    private double calculateDistance(Address origin, Address destination) {
+        // Distance calculation logic
+        return 100.0; // Simplified
+    }
+}
+
+@Service
+public class ExpressShippingCalculator implements ShippingCalculator {
+    
+    private static final double BASE_RATE = 15.99;
+    private static final double PER_KG_RATE = 5.00;
+    
+    @Override
+    public double calculateCost(ShippingRequest request) {
+        double weight = request.getTotalWeight();
+        return BASE_RATE + (weight * PER_KG_RATE);
+    }
+    
+    @Override
+    public int getEstimatedDays(ShippingRequest request) {
+        return 2; // 2 business days
+    }
+    
+    @Override
+    public boolean supports(String shippingMethod) {
+        return "EXPRESS".equals(shippingMethod);
+    }
+    
+    @Override
+    public String getShippingMethod() {
+        return "EXPRESS";
+    }
+}
+
+@Service
+public class OvernightShippingCalculator implements ShippingCalculator {
+    
+    private static final double BASE_RATE = 25.99;
+    private static final double PER_KG_RATE = 10.00;
+    
+    @Override
+    public double calculateCost(ShippingRequest request) {
+        double weight = request.getTotalWeight();
+        double urgencySurcharge = 5.00;
+        
+        return BASE_RATE + (weight * PER_KG_RATE) + urgencySurcharge;
+    }
+    
+    @Override
+    public int getEstimatedDays(ShippingRequest request) {
+        return 1; // Next business day
+    }
+    
+    @Override
+    public boolean supports(String shippingMethod) {
+        return "OVERNIGHT".equals(shippingMethod);
+    }
+    
+    @Override
+    public String getShippingMethod() {
+        return "OVERNIGHT";
+    }
+}
+
+// ✨ NEW: International shipping (added later, no modification to existing code!)
+@Service
+public class InternationalShippingCalculator implements ShippingCalculator {
+    
+    @Autowired
+    private CustomsDutyCalculator customsCalculator;
+    
+    @Override
+    public double calculateCost(ShippingRequest request) {
+        double baseCost = 50.00;
+        double weight = request.getTotalWeight();
+        double perKgRate = 15.00;
+        
+        double shippingCost = baseCost + (weight * perKgRate);
+        double customsDuty = customsCalculator.calculate(request);
+        
+        return shippingCost + customsDuty;
+    }
+    
+    @Override
+    public int getEstimatedDays(ShippingRequest request) {
+        return 10; // 10-14 business days
+    }
+    
+    @Override
+    public boolean supports(String shippingMethod) {
+        return "INTERNATIONAL".equals(shippingMethod);
+    }
+    
+    @Override
+    public String getShippingMethod() {
+        return "INTERNATIONAL";
+    }
+}
+
+// Shipping service
+@Service
+public class ShippingService {
+    
+    private final Map<String, ShippingCalculator> calculators;
+    
+    @Autowired
+    public ShippingService(List<ShippingCalculator> calculatorList) {
+        this.calculators = calculatorList.stream()
+            .collect(Collectors.toMap(
+                ShippingCalculator::getShippingMethod,
+                Function.identity()
+            ));
+    }
+    
+    public ShippingQuote getQuote(ShippingRequest request) {
+        ShippingCalculator calculator = calculators.get(request.getShippingMethod());
+        
+        if (calculator == null) {
+            throw new UnsupportedShippingMethodException(
+                "Shipping method not supported: " + request.getShippingMethod()
+            );
+        }
+        
+        double cost = calculator.calculateCost(request);
+        int estimatedDays = calculator.getEstimatedDays(request);
+        
+        return new ShippingQuote(cost, estimatedDays, request.getShippingMethod());
+    }
+    
+    public List<ShippingQuote> getAllQuotes(ShippingRequest request) {
+        return calculators.values().stream()
+            .map(calculator -> new ShippingQuote(
+                calculator.calculateCost(request),
+                calculator.getEstimatedDays(request),
+                calculator.getShippingMethod()
+            ))
+            .sorted(Comparator.comparing(ShippingQuote::getCost))
+            .collect(Collectors.toList());
+    }
+}
+```
+
+---
+
+## 🔔 Scenario 4: Notification System
+
+### ✅ GOOD Example - Extensible Notifications
+
+```java
+/**
+ * ✨ OCP-COMPLIANT: Multi-channel notification system
+ */
+
+public interface NotificationChannel {
+    void send(Notification notification);
+    boolean supports(String channelType);
+    String getChannelType();
+}
+
+@Service
+public class EmailNotificationChannel implements NotificationChannel {
+    
+    @Autowired
+    private JavaMailSender mailSender;
+    
+    @Override
+    public void send(Notification notification) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            
+            helper.setTo(notification.getRecipient());
+            helper.setSubject(notification.getSubject());
+            helper.setText(notification.getBody(), true);
+            
+            mailSender.send(message);
+            
+            System.out.println("�� Email sent to: " + notification.getRecipient());
+            
+        } catch (Exception e) {
+            throw new NotificationException("Failed to send email", e);
+        }
+    }
+    
+    @Override
+    public boolean supports(String channelType) {
+        return "EMAIL".equals(channelType);
+    }
+    
+    @Override
+    public String getChannelType() {
+        return "EMAIL";
+    }
+}
+
+@Service
+public class SMSNotificationChannel implements NotificationChannel {
+    
+    @Value("${sms.provider.url}")
+    private String smsProviderUrl;
+    
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+    
+    @Override
+    public void send(Notification notification) {
+        try {
+            String requestBody = String.format(
+                "{\"to\":\"%s\", \"message\":\"%s\"}",
+                notification.getRecipient(),
+                notification.getBody()
+            );
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(smsProviderUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+            
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            System.out.println("📱 SMS sent to: " + notification.getRecipient());
+            
+        } catch (Exception e) {
+            throw new NotificationException("Failed to send SMS", e);
+        }
+    }
+    
+    @Override
+    public boolean supports(String channelType) {
+        return "SMS".equals(channelType);
+    }
+    
+    @Override
+    public String getChannelType() {
+        return "SMS";
+    }
+}
+
+@Service
+public class PushNotificationChannel implements NotificationChannel {
+    
+    @Autowired
+    private FirebaseMessaging firebaseMessaging;
+    
+    @Override
+    public void send(Notification notification) {
+        try {
+            Message message = Message.builder()
+                .setToken(notification.getDeviceToken())
+                .setNotification(com.google.firebase.messaging.Notification.builder()
+                    .setTitle(notification.getSubject())
+                    .setBody(notification.getBody())
+                    .build())
+                .build();
+            
+            firebaseMessaging.send(message);
+            
+            System.out.println("🔔 Push notification sent to device: " + notification.getDeviceToken());
+            
+        } catch (Exception e) {
+            throw new NotificationException("Failed to send push notification", e);
+        }
+    }
+    
+    @Override
+    public boolean supports(String channelType) {
+        return "PUSH".equals(channelType);
+    }
+    
+    @Override
+    public String getChannelType() {
+        return "PUSH";
+    }
+}
+
+// ✨ NEW: Slack notifications (added 6 months later)
+@Service
+public class SlackNotificationChannel implements NotificationChannel {
+    
+    @Value("${slack.webhook.url}")
+    private String webhookUrl;
+    
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+    
+    @Override
+    public void send(Notification notification) {
+        try {
+            String slackMessage = String.format(
+                "{\"text\":\"%s\\n%s\"}",
+                notification.getSubject(),
+                notification.getBody()
+            );
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(webhookUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(slackMessage))
+                .build();
+            
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            System.out.println("💬 Slack notification sent to channel");
+            
+        } catch (Exception e) {
+            throw new NotificationException("Failed to send Slack notification", e);
+        }
+    }
+    
+    @Override
+    public boolean supports(String channelType) {
+        return "SLACK".equals(channelType);
+    }
+    
+    @Override
+    public String getChannelType() {
+        return "SLACK";
+    }
+}
+
+// ✨ NEW: WhatsApp notifications (added 1 year later)
+@Service
+public class WhatsAppNotificationChannel implements NotificationChannel {
+    
+    @Autowired
+    private WhatsAppBusinessClient whatsAppClient;
+    
+    @Override
+    public void send(Notification notification) {
+        whatsAppClient.sendMessage(
+            notification.getRecipient(),
+            notification.getBody()
+        );
+        
+        System.out.println("💚 WhatsApp message sent to: " + notification.getRecipient());
+    }
+    
+    @Override
+    public boolean supports(String channelType) {
+        return "WHATSAPP".equals(channelType);
+    }
+    
+    @Override
+    public String getChannelType() {
+        return "WHATSAPP";
+    }
+}
+
+// Notification service - CLOSED for modification
+@Service
+public class NotificationService {
+    
+    private final Map<String, NotificationChannel> channels;
+    
+    @Autowired
+    public NotificationService(List<NotificationChannel> channelList) {
+        this.channels = channelList.stream()
+            .collect(Collectors.toMap(
+                NotificationChannel::getChannelType,
+                Function.identity()
+            ));
+    }
+    
+    /**
+     * Send notification via specified channel
+     */
+    public void send(Notification notification, String channelType) {
+        NotificationChannel channel = channels.get(channelType);
+        
+        if (channel == null) {
+            throw new UnsupportedChannelException("Channel not supported: " + channelType);
+        }
+        
+        channel.send(notification);
+    }
+    
+    /**
+     * Send notification via multiple channels
+     */
+    public void sendMultiChannel(Notification notification, List<String> channelTypes) {
+        for (String channelType : channelTypes) {
+            CompletableFuture.runAsync(() -> send(notification, channelType));
+        }
+    }
+    
+    /**
+     * Broadcast to all available channels
+     */
+    public void broadcast(Notification notification) {
+        channels.values().forEach(channel -> 
+            CompletableFuture.runAsync(() -> channel.send(notification))
+        );
+    }
+    
+    public List<String> getAvailableChannels() {
+        return new ArrayList<>(channels.keySet());
+    }
+}
+
+// Usage example
+@Service
+public class OrderNotificationService {
+    
+    @Autowired
+    private NotificationService notificationService;
+    
+    public void notifyOrderConfirmation(Order order, User user) {
+        Notification notification = Notification.builder()
+            .recipient(user.getEmail())
+            .subject("Order Confirmation #" + order.getId())
+            .body("Your order has been confirmed. Total: $" + order.getTotal())
+            .build();
+        
+        // Send via multiple channels
+        notificationService.sendMultiChannel(
+            notification,
+            Arrays.asList("EMAIL", "SMS", "PUSH")
+        );
+    }
+}
+```
+
+---
+
+## 📊 Scenario 5: Report Generation
+
+### ✅ GOOD Example - Extensible Reports
+
+```java
+/**
+ * ✨ OCP-COMPLIANT: Report generation system
+ */
+
+public interface ReportGenerator {
+    byte[] generate(ReportData data);
+    String getFormat();
+    String getContentType();
+}
+
+@Service
+public class PDFReportGenerator implements ReportGenerator {
+    
+    @Override
+    public byte[] generate(ReportData data) {
+        // Using iText or similar library
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            // PDF generation logic
+            Document document = new Document();
+            PdfWriter.getInstance(document, baos);
+            document.open();
+            
+            document.add(new Paragraph("Report Title: " + data.getTitle()));
+            document.add(new Paragraph("Generated: " + LocalDateTime.now()));
+            
+            // Add data
+            for (ReportRow row : data.getRows()) {
+                document.add(new Paragraph(row.toString()));
+            }
+            
+            document.close();
+            
+            return baos.toByteArray();
+            
+        } catch (Exception e) {
+            throw new ReportGenerationException("Failed to generate PDF", e);
+        }
+    }
+    
+    @Override
+    public String getFormat() {
+        return "PDF";
+    }
+    
+    @Override
+    public String getContentType() {
+        return "application/pdf";
+    }
+}
+
+@Service
+public class ExcelReportGenerator implements ReportGenerator {
+    
+    @Override
+    public byte[] generate(ReportData data) {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            
+            Sheet sheet = workbook.createSheet("Report");
+            
+            // Header row
+            Row headerRow = sheet.createRow(0);
+            List<String> headers = data.getHeaders();
+            for (int i = 0; i < headers.size(); i++) {
+                headerRow.createCell(i).setCellValue(headers.get(i));
+            }
+            
+            // Data rows
+            List<ReportRow> rows = data.getRows();
+            for (int i = 0; i < rows.size(); i++) {
+                Row row = sheet.createRow(i + 1);
+                ReportRow reportRow = rows.get(i);
+                
+                for (int j = 0; j < reportRow.getValues().size(); j++) {
+                    row.createCell(j).setCellValue(reportRow.getValues().get(j));
+                }
+            }
+            
+            workbook.write(baos);
+            return baos.toByteArray();
+            
+        } catch (Exception e) {
+            throw new ReportGenerationException("Failed to generate Excel", e);
+        }
+    }
+    
+    @Override
+    public String getFormat() {
+        return "EXCEL";
+    }
+    
+    @Override
+    public String getContentType() {
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    }
+}
+
+@Service
+public class CSVReportGenerator implements ReportGenerator {
+    
+    @Override
+    public byte[] generate(ReportData data) {
+        StringBuilder csv = new StringBuilder();
+        
+        // Headers
+        csv.append(String.join(",", data.getHeaders())).append("\n");
+        
+        // Rows
+        for (ReportRow row : data.getRows()) {
+            csv.append(String.join(",", row.getValues())).append("\n");
+        }
+        
+        return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+    
+    @Override
+    public String getFormat() {
+        return "CSV";
+    }
+    
+    @Override
+    public String getContentType() {
+        return "text/csv";
+    }
+}
+
+// ✨ NEW: JSON report format (added later)
+@Service
+public class JSONReportGenerator implements ReportGenerator {
+    
+    @Autowired
+    private ObjectMapper objectMapper;
+    
+    @Override
+    public byte[] generate(ReportData data) {
+        try {
+            Map<String, Object> report = new HashMap<>();
+            report.put("title", data.getTitle());
+            report.put("generatedAt", LocalDateTime.now());
+            report.put("headers", data.getHeaders());
+            report.put("rows", data.getRows());
+            
+            return objectMapper.writeValueAsBytes(report);
+            
+        } catch (Exception e) {
+            throw new ReportGenerationException("Failed to generate JSON", e);
+        }
+    }
+    
+    @Override
+    public String getFormat() {
+        return "JSON";
+    }
+    
+    @Override
+    public String getContentType() {
+        return "application/json";
+    }
+}
+
+// Report service
+@Service
+public class ReportService {
+    
+    private final Map<String, ReportGenerator> generators;
+    
+    @Autowired
+    public ReportService(List<ReportGenerator> generatorList) {
+        this.generators = generatorList.stream()
+            .collect(Collectors.toMap(
+                ReportGenerator::getFormat,
+                Function.identity()
+            ));
+    }
+    
+    public ReportResponse generateReport(ReportRequest request) {
+        ReportGenerator generator = generators.get(request.getFormat().toUpperCase());
+        
+        if (generator == null) {
+            throw new UnsupportedFormatException("Format not supported: " + request.getFormat());
+        }
+        
+        ReportData data = prepareReportData(request);
+        byte[] content = generator.generate(data);
+        
+        return ReportResponse.builder()
+            .content(content)
+            .contentType(generator.getContentType())
+            .filename("report_" + LocalDateTime.now() + "." + request.getFormat().toLowerCase())
+            .build();
+    }
+    
+    private ReportData prepareReportData(ReportRequest request) {
+        // Fetch and prepare data based on request
+        return new ReportData();
+    }
+    
+    public List<String> getSupportedFormats() {
+        return new ArrayList<>(generators.keySet());
+    }
+}
+
+// Controller
+@RestController
+@RequestMapping("/api/reports")
+public class ReportController {
+    
+    @Autowired
+    private ReportService reportService;
+    
+    @GetMapping("/sales")
+    public ResponseEntity<byte[]> generateSalesReport(
+            @RequestParam(defaultValue = "PDF") String format) {
+        
+        ReportRequest request = new ReportRequest("SALES", format);
+        ReportResponse response = reportService.generateReport(request);
+        
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, 
+                   "attachment; filename=\"" + response.getFilename() + "\"")
+            .contentType(MediaType.parseMediaType(response.getContentType()))
+            .body(response.getContent());
+    }
+    
+    @GetMapping("/formats")
+    public ResponseEntity<List<String>> getSupportedFormats() {
+        return ResponseEntity.ok(reportService.getSupportedFormats());
+    }
+}
+```
+
+---
+
+## 💵 Scenario 6: Tax Calculation Engine
+
+### ✅ GOOD Example
+
+```java
+/**
+ * ✨ OCP-COMPLIANT: Flexible tax calculation
+ */
+
+public interface TaxCalculator {
+    double calculate(TaxableOrder order);
+    boolean appliesTo(Address address);
+    String getTaxRegion();
+}
+
+@Service
+public class USTaxCalculator implements TaxCalculator {
+    
+    private static final Map<String, Double> STATE_TAX_RATES = Map.of(
+        "CA", 0.0725,
+        "NY", 0.08,
+        "TX", 0.0625,
+        "FL", 0.06,
+        "WA", 0.065
+    );
+    
+    @Override
+    public double calculate(TaxableOrder order) {
+        String state = order.getShippingAddress().getState();
+        double taxRate = STATE_TAX_RATES.getOrDefault(state, 0.05);
+        
+        return order.getSubtotal() * taxRate;
+    }
+    
+    @Override
+    public boolean appliesTo(Address address) {
+        return "US".equals(address.getCountry());
+    }
+    
+    @Override
+    public String getTaxRegion() {
+        return "US";
+    }
+}
+
+@Service
+public class EUVATCalculator implements TaxCalculator {
+    
+    private static final Map<String, Double> VAT_RATES = Map.of(
+        "DE", 0.19,  // Germany
+        "FR", 0.20,  // France
+        "UK", 0.20,  // United Kingdom
+        "IT", 0.22,  // Italy
+        "ES", 0.21   // Spain
+    );
+    
+    @Override
+    public double calculate(TaxableOrder order) {
+        String country = order.getShippingAddress().getCountry();
+        double vatRate = VAT_RATES.getOrDefault(country, 0.20);
+        
+        return order.getSubtotal() * vatRate;
+    }
+    
+    @Override
+    public boolean appliesTo(Address address) {
+        return VAT_RATES.containsKey(address.getCountry());
+    }
+    
+    @Override
+    public String getTaxRegion() {
+        return "EU";
+    }
+}
+
+// ✨ NEW: Canada GST/PST calculator (added later)
+@Service
+public class CanadaTaxCalculator implements TaxCalculator {
+    
+    @Override
+    public double calculate(TaxableOrder order) {
+        double gst = 0.05; // 5% GST (federal)
+        String province = order.getShippingAddress().getState();
+        
+        // Provincial sales tax varies
+        double pst = switch (province) {
+            case "BC" -> 0.07;
+            case "SK" -> 0.06;
+            case "MB" -> 0.07;
+            case "QC" -> 0.09975;
+            default -> 0.0;
+        };
+        
+        return order.getSubtotal() * (gst + pst);
+    }
+    
+    @Override
+    public boolean appliesTo(Address address) {
+        return "CA".equals(address.getCountry());
+    }
+    
+    @Override
+    public String getTaxRegion() {
+        return "CANADA";
+    }
+}
+
+// Tax service
+@Service
+public class TaxService {
+    
+    private final List<TaxCalculator> calculators;
+    
+    @Autowired
+    public TaxService(List<TaxCalculator> calculators) {
+        this.calculators = calculators;
+    }
+    
+    public double calculateTax(TaxableOrder order) {
+        Address address = order.getShippingAddress();
+        
+        return calculators.stream()
+            .filter(calc -> calc.appliesTo(address))
+            .findFirst()
+            .map(calc -> calc.calculate(order))
+            .orElse(0.0);
+    }
+}
+```
+
+---
+
+## 🎤 Interview Questions & Answers
+
+### Q1: "What is the Open/Closed Principle?"
+
+**Perfect Answer:**
+```
+OCP states that software entities should be OPEN for extension 
+but CLOSED for modification.
+
+This means:
+✅ You can ADD new functionality (extend)
+✅ WITHOUT changing existing code (closed)
+
+Real Example from my project:
+
+PROBLEM:
+We had a discount calculator with 500 lines of if-else.
+Every new promotion type required:
+- Modifying the same method
+- Testing EVERYTHING again
+- Risk of breaking existing discounts
+
+We had 8 production bugs in 6 months!
+
+SOLUTION (OCP):
+- Created DiscountStrategy interface
+- Each promotion = separate class
+- Added 12 new promotions in next 6 months
+- Zero bugs in existing discounts
+- Zero modifications to working code
+
+The key insight:
+"Add new code, don't change old code"
+```
+
+---
+
+### Q2: "How do you identify OCP violations?"
+
+**Perfect Answer:**
+```
+Red flags that scream OCP violation:
+
+1️⃣ LONG IF-ELSE or SWITCH statements
+   if (type.equals("A")) { ... }
+   else if (type.equals("B")) { ... }
+   else if (type.equals("C")) { ... }
+   // Growing forever...
+
+2️⃣ Modifying existing class for new features
+   "I need to add email notification"
+   → Opens NotificationService.java
+   → Modifies existing method
+   → Risk breaking SMS notifications
+
+3️⃣ String/enum type checking
+   if (paymentType == PaymentType.CREDIT_CARD)
+   // What if we add BITCOIN?
+
+4️⃣ Multiple teams modifying same file
+   Constant merge conflicts
+
+5️⃣ Fear of adding features
+   "Let's not touch that, it might break"
+
+Real example from code review:
+
+❌ VIOLATION:
+public void process(String type) {
+    if ("EMAIL".equals(type)) { ... }
+    else if ("SMS".equals(type)) { ... }
+    // Team adds more if-else every sprint
+}
+
+✅ FIXED:
+interface NotificationChannel { void send(); }
+
+class EmailChannel implements NotificationChannel { ... }
+class SMSChannel implements NotificationChannel { ... }
+class SlackChannel implements NotificationChannel { ... }
+// New channels = new classes, zero modification!
+```
+
+---
+
+### Q3: "Give a real example where violating OCP caused problems"
+
+**Perfect Answer:**
+```
+REAL PRODUCTION INCIDENT:
+
+CONTEXT:
+E-commerce platform with payment processing.
+All payment methods in one 600-line class with giant switch.
+
+THE REQUEST:
+Marketing: "Add Apple Pay before Black Friday"
+
+THE IMPLEMENTATION:
+Developer added new case in switch statement:
+
+switch (paymentMethod) {
+    case "CREDIT_CARD": ...
+    case "PAYPAL": ...
+    case "APPLE_PAY": ...  // ← NEW
+}
+
+THE MISTAKE:
+While adding Apple Pay code, developer accidentally:
+- Removed a break; statement in PayPal case
+- PayPal logic fell through to Apple Pay logic
+
+DEPLOYED TO PRODUCTION:
+
+IMPACT:
+💥 All PayPal payments started FAILING
+💥 Lost $250,000 in sales (2 hours before fix)
+💥 3,500 customer complaints
+💥 Emergency rollback at 2 AM
+💥 Team worked 14 hours straight
+
+ROOT CAUSE: OCP Violation
+- Adding new feature required modifying existing code
+- 600 lines in one method
+- One typo broke everything
+- No isolation between payment methods
+
+THE FIX (OCP):
+interface PaymentProcessor { ... }
+
+class CreditCardProcessor implements PaymentProcessor { ... }
+class PayPalProcessor implements PaymentProcessor { ... }
+class ApplePayProcessor implements PaymentProcessor { ... }
+
+Result after refactor:
+✅ Added 6 new payment methods in next year
+✅ Zero bugs in existing methods
+✅ Each method independently testable
+✅ Zero production incidents
+
+LESSON: OCP isn't academic - it prevents REAL $$ loss!
+```
+
+---
+
+### Q4: "What's the difference between OCP and just creating new classes?"
+
+**Perfect Answer:**
+```
+Great question! OCP is about the DESIGN, not just adding classes.
+
+❌ WRONG (Just adding classes):
+class OrderProcessor {
+    void process(Order order) {
+        if (order.type == "ONLINE") {
+            new OnlineOrderProcessor().process(order);
+        } else if (order.type == "RETAIL") {
+            new RetailOrderProcessor().process(order);
+        } else if (order.type == "WHOLESALE") {
+            new WholesaleOrderProcessor().process(order);
+        }
+        // Still need to MODIFY this if-else!
+    }
+}
+
+✅ CORRECT (OCP Design):
+interface OrderProcessor {
+    void process(Order order);
+}
+
+class OrderService {
+    private Map<String, OrderProcessor> processors;
+    
+    @Autowired  // Auto-discovers ALL implementations
+    OrderService(List<OrderProcessor> processorList) {
+        processors = processorList.stream()
+            .collect(Collectors.toMap(
+                OrderProcessor::getType, 
+                Function.identity()
+            ));
+    }
+    
+    void process(Order order) {
+        processors.get(order.type).process(order);
+        // NO modification needed for new processor types!
+    }
+}
+
+Key Difference:
+❌ Wrong: Client code knows about all implementations
+✅ Right: Client code works through abstraction
+
+OCP means:
+1. Design with abstraction (interface/abstract class)
+2. Client depends on abstraction, not concrete classes
+3. New features = new implementations
+4. Zero changes to existing client code
+
+Real Test:
+"Can I add feature without modifying ANY existing class?"
+- YES → Following OCP ✅
+- NO → Violating OCP ❌
+```
+
+---
+
+### Q5: "Doesn't OCP lead to too many classes?"
+
+**Perfect Answer:**
+```
+Yes and no - it's about balance!
+
+ANTI-PATTERN: Over-engineering
+class AddTwoNumbersStrategy { }
+class MultiplyTwoNumbersStrategy { }
+class DivideTwoNumbersStrategy { }
+// This is ridiculous over-engineering!
+
+GOOD PATTERN: Meaningful extension points
+interface PaymentProcessor { }
+class StripeProcessor implements PaymentProcessor { }
+class PayPalProcessor implements PaymentProcessor { }
+// These are likely to vary independently
+
+RULE OF THUMB:
+
+Create abstraction when:
+✅ You have 3+ if-else for same type check
+✅ Different implementations likely to be added
+✅ Different teams might extend functionality
+✅ Runtime configuration needed
+✅ Plugin architecture desired
+
+DON'T create abstraction when:
+❌ Only 2 simple variations
+❌ Logic unlikely to change
+❌ Over-complicates simple code
+❌ No foreseeable new cases
+
+Real Example:
+
+BAD:
+interface NameFormatter {
+    String format(String name);
+}
+class UpperCaseNameFormatter { }
+class LowerCaseNameFormatter { }
+// Just use name.toUpperCase()!
+
+GOOD:
+interface DiscountStrategy {
+    double calculate(Order order);
+}
+class PercentageDiscount { }
+class FixedAmountDiscount { }
+class BuyXGetYDiscount { }
+class SeasonalDiscount { }
+// Business adds new promotions monthly!
+
+Ask yourself:
+"Is this variation point likely to grow?"
+- YES → Use OCP
+- NO → Keep it simple
+
+Remember:
+OCP is about VARIATION POINTS, not every single decision.
+```
+
+---
+
+### Q6: "How does OCP relate to other SOLID principles?"
+
+**Perfect Answer:**
+```
+OCP works WITH other principles:
+
+OCP + SRP:
+- SRP: Each class has one responsibility
+- OCP: Extend via new single-responsibility classes
+- Together: Add features without modifying existing responsibilities
+
+Example:
+interface NotificationChannel { }  // SRP: Just send notifications
+class EmailChannel { }              // SRP: Email only
+class SMSChannel { }                // SRP: SMS only
+// OCP: Add PushChannel without touching existing code
+
+OCP + LSP:
+- LSP: Subclass must work like parent
+- OCP: Extension works because subclasses are substitutable
+
+Example:
+interface PaymentProcessor { PaymentResult process(...); }
+// All implementations return PaymentResult (LSP)
+// Can add new processor types safely (OCP)
+
+OCP + ISP:
+- ISP: Small, focused interfaces
+- OCP: Easier to extend when interfaces are focused
+
+Example:
+interface Discountable { double getDiscount(); }
+interface Trackable { String getTrackingNumber(); }
+// Easy to mix and match behaviors
+
+OCP + DIP:
+- DIP: Depend on abstractions
+- OCP: Extension through abstractions
+
+Example:
+class OrderService {
+    private PaymentProcessor processor;  // DIP: depend on abstraction
+    
+    OrderService(PaymentProcessor processor) {
+        this.processor = processor;
+    }
+    // OCP: Can inject any payment processor
+}
+
+They all work together:
+SOLID = Synergistic principles, not isolated rules
+```
+
+---
+
+## 🎯 Quick Reference Card
+
+```java
+/**
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *      OPEN/CLOSED PRINCIPLE (OCP)
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 
+ * 🎯 DEFINITION:
+ * "Open for extension, Closed for modification"
+ * 
+ * 🔍 IDENTIFY VIOLATIONS:
+ * ❌ Long if-else or switch statements
+ * ❌ Modifying existing classes for new features
+ * ❌ String/enum type checking everywhere
+ * ❌ Fear of adding features (might break stuff)
+ * ❌ Constant merge conflicts
+ * 
+ * ✅ SOLUTIONS:
+ * ✓ Use interfaces/abstract classes
+ * ✓ Strategy Pattern
+ * ✓ Template Method Pattern
+ * ✓ Factory Pattern
+ * ✓ Dependency Injection
+ * ✓ Polymorphism
+ * 
+ * 🔧 IMPLEMENTATION TECHNIQUES:
+ * 1. Define abstraction (interface/abstract class)
+ * 2. Create concrete implementations
+ * 3. Client depends on abstraction
+ * 4. Add new features = new implementations
+ * 5. Zero changes to existing code
+ * 
+ * 🎁 BENEFITS:
+ * ✓ Add features without breaking existing code
+ * ✓ Reduced testing (only test new code)
+ * ✓ Parallel development (no conflicts)
+ * ✓ Runtime flexibility
+ * ✓ Plugin architecture
+ * ✓ Easier maintenance
+ * 
+ * ⚠️ WHEN TO APPLY:
+ * ✓ 3+ variations of same concept
+ * ✓ Frequent new feature requests
+ * ✓ Multiple teams extending system
+ * ✓ Plugin architecture needed
+ * 
+ * 🚫 WHEN NOT TO APPLY:
+ * ✗ Only 2 simple cases
+ * ✗ Logic never changes
+ * ✗ Over-complicates simple code
+ * 
+ * 💡 THE TEST:
+ * "Can I add new feature without modifying existing classes?"
+ * • YES → OCP followed ✅
+ * • NO → OCP violated ❌
+ * 
+ * 📝 REMEMBER:
+ * "Add new code, don't change old code!"
+ * 
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ */
+```
+
+---
+
+## 🌟 Final Pro Tips
+
+### 1️⃣ Start with Strategy Pattern
+```java
+// Most common OCP implementation
+interface Strategy { }
+class ConcreteStrategyA implements Strategy { }
+class ConcreteStrategyB implements Strategy { }
+```
+
+### 2️⃣ Use Dependency Injection
+```java
+// Let framework manage implementations
+@Autowired
+List<DiscountStrategy> allDiscounts;  // Auto-discovers all!
+```
+
+### 3️⃣ Avoid Premature Abstraction
+```java
+// Don't create abstraction until you have 3+ cases
+// YAGNI (You Aren't Gonna Need It) applies
+```
+
+### 4️⃣ Make Abstractions Meaningful
+```java
+✅ interface PaymentProcessor
+✅ interface ShippingCalculator
+✅ interface TaxCalculator
+❌ interface IService
+❌ interface BaseProcessor
+```
+
+### 5️⃣ Document Extension Points
+```java
+/**
+ * To add new payment method:
+ * 1. Implement PaymentProcessor interface
+ * 2. Annotate with @Service
+ * 3. Done! Auto-discovered by Spring
+ */
+public interface PaymentProcessor { }
+```
+
+---
+
+**Remember:** 🌟
+
+> "The best code is the code you DON'T have to change.
+> Design for extension, not modification.
+> Your production system will thank you!"
+
+---
+
+*Made with ❤️ for Extensible Systems*
+*Zero Bugs Rate: 💯%*
+
+🚀 **Happy Extending!**
+
 # 🛒 Liskov Substitution Principle - E-Commerce Real-Time Examples
 ---
 
