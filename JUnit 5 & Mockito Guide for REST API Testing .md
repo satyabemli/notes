@@ -155,7 +155,14 @@ server:
 
 logging:
   level:
-    com.example.employee: DEBUG
+    root: INFO
+    com.hcltech.leave: DEBUG
+    org.springframework.web: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
 ```
 
 ---
