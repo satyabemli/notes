@@ -1,5 +1,8 @@
 # Java Stream API Coding Questions with Complete Solutions
 
+## Online practice for Java Streams — just copy the solution, paste it into this site: [https://www.codingshuttle.com/compilers/java/](https://www.codingshuttle.com/compilers/java/), then compile and run it to get the result.
+
+
 ## BASIC LEVEL (1-15)
 
 ### 1. Find unique/distinct numbers from an array
